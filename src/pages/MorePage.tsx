@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import Card from '../components/Card'
+import StatsPage from './StatsPage'
 import { buildReport } from '../lib/report'
 import { searchWeatherLocations } from '../lib/weather'
 import { toISODate } from '../lib/date'
@@ -14,7 +15,7 @@ import type {
   WeatherLocation,
 } from '../types'
 
-type Mode = 'report' | 'settings'
+type Mode = 'stats' | 'report' | 'settings'
 
 type Props = {
   settings: AppSettings
@@ -44,7 +45,7 @@ export default function MorePage({
   onSave,
 }: Props) {
   const today = toISODate(new Date())
-  const [mode, setMode] = useState<Mode>('report')
+  const [mode, setMode] = useState<Mode>('stats')
   const [draft, setDraft] = useState(settings)
   const [saved, setSaved] = useState(false)
   const [reportStart, setReportStart] = useState(settings.adoptionDate)
@@ -159,7 +160,14 @@ export default function MorePage({
           <h1>더보기</h1>
         </div>
 
-        <div className="view-toggle" role="group" aria-label="더보기 메뉴">
+        <div className="view-toggle more-mode-toggle" role="group" aria-label="더보기 메뉴">
+          <button
+            type="button"
+            className={mode === 'stats' ? 'active' : ''}
+            onClick={() => setMode('stats')}
+          >
+            통계
+          </button>
           <button
             type="button"
             className={mode === 'report' ? 'active' : ''}
@@ -177,11 +185,16 @@ export default function MorePage({
         </div>
       </header>
 
-      {mode === 'report' ? (
+      {mode === 'stats' ? (
+        <StatsPage
+          feedingLogs={feedingLogs}
+          weightLogs={weightLogs}
+        />
+      ) : mode === 'report' ? (
         <>
           <Card title="관찰 보고서" icon="📄">
             <p className="setting-help report-intro">
-              기간을 골라 급여·체중·배변·환경·관찰·TMI를 한 번에 정리합니다.
+              기간을 골라 급여·체중·배변·관찰·TMI를 한 번에 정리합니다.
               ChatGPT 평가용 출력에는 분석 지침과 평가서 양식까지 자동으로 붙습니다.
             </p>
 
@@ -254,8 +267,8 @@ export default function MorePage({
 
           <Card title="현재 구현 상태">
             <p className="setting-help">
-              이번 로컬 버전은 현재 설정을 기준으로 급여 예정 회차를 계산합니다.
-              ‘급여 정책 변경 이력’까지 과거 날짜별로 정확히 적용하는 기능은 D1 연동 단계에서 넣을 예정입니다.
+              급여·체중 일정은 적용 시작일별로 이력을 보존합니다.
+              보고서와 과거 달력도 해당 날짜에 실제로 적용되던 스케줄로 계산합니다.
             </p>
           </Card>
         </>
@@ -340,7 +353,22 @@ export default function MorePage({
 
             <p className="setting-help">
               예: 8/31 급여 회차를 9/1 새벽 2시에 급여해도, 마감이 06시라면 8/31 회차 완료로 기록됩니다.
+              새 설정을 저장하면 위 ‘적용 시작일’부터 새 기간이 생기고 이전 일정은 보존됩니다.
             </p>
+
+            <div className="schedule-history">
+              <strong>급여 일정 이력</strong>
+              {[...settings.feedingScheduleHistory]
+                .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))
+                .map((period) => (
+                  <div className="schedule-history-row" key={period.id}>
+                    <span>{period.effectiveFrom}부터</span>
+                    <small>
+                      {period.intervalDays}일마다 · {period.time} · 새벽 {String(period.graceUntilHour).padStart(2, '0')}시까지
+                    </small>
+                  </div>
+                ))}
+            </div>
           </Card>
 
 
@@ -493,7 +521,23 @@ export default function MorePage({
 
             <p className="setting-help">
               첫 측정일을 비워두면 첫 체중 기록을 저장하는 순간 그 날짜가 자동으로 첫 측정일이 됩니다.
+              측정 간격만 바꾸면 저장한 날짜부터 새 주기가 적용되고, 과거 예정일은 다시 계산하지 않습니다.
+              첫 측정일 필드는 잘못된 시작점을 바로잡을 때만 수정하면 됩니다.
             </p>
+
+            {settings.weightScheduleHistory.length > 0 && (
+              <div className="schedule-history">
+                <strong>체중 일정 이력</strong>
+                {[...settings.weightScheduleHistory]
+                  .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))
+                  .map((period) => (
+                    <div className="schedule-history-row" key={period.id}>
+                      <span>{period.effectiveFrom}부터</span>
+                      <small>{period.intervalDays}일마다</small>
+                    </div>
+                  ))}
+              </div>
+            )}
           </Card>
 
           <div className="settings-save-bar">

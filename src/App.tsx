@@ -7,6 +7,11 @@ import RecordPage from './pages/RecordPage'
 import TodayPage from './pages/TodayPage'
 import { store } from './lib/storage'
 import { toISODate } from './lib/date'
+import {
+  commitScheduleChanges,
+  reanchorWeightSchedule,
+  startWeightSchedule,
+} from './lib/schedule'
 import type {
   AppSettings,
   DefecationLog,
@@ -66,7 +71,7 @@ const addWeight = (log: WeightLog) => {
 
   setSettings((prev) => {
     if (prev.weightStartDate) return prev
-    const next = { ...prev, weightStartDate: log.date }
+    const next = startWeightSchedule(prev, log.date)
     store.saveSettings(next)
     return next
   })
@@ -85,10 +90,11 @@ const updateWeight = (log: WeightLog) => {
     previous.date !== log.date
   ) {
     const earliest = [...next].sort((a, b) => a.date.localeCompare(b.date))[0]
-    const nextSettings = {
-      ...settings,
-      weightStartDate: earliest?.date,
-    }
+    const nextSettings = reanchorWeightSchedule(
+      settings,
+      previous.date,
+      earliest?.date,
+    )
 
     setSettings(nextSettings)
     store.saveSettings(nextSettings)
@@ -108,10 +114,11 @@ const deleteWeight = (id: string) => {
     !next.some((item) => item.date === target.date)
   ) {
     const earliest = [...next].sort((a, b) => a.date.localeCompare(b.date))[0]
-    const nextSettings = {
-      ...settings,
-      weightStartDate: earliest?.date,
-    }
+    const nextSettings = reanchorWeightSchedule(
+      settings,
+      target.date,
+      earliest?.date,
+    )
 
     setSettings(nextSettings)
     store.saveSettings(nextSettings)
@@ -225,7 +232,8 @@ const deleteDefecation = (id: string) => {
   store.saveDefecationLogs(next)
 }
 
-  const saveSettings = (next: AppSettings) => {
+  const saveSettings = (draft: AppSettings) => {
+    const next = commitScheduleChanges(settings, draft)
     setSettings(next)
     store.saveSettings(next)
   }

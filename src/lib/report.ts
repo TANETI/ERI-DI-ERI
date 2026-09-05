@@ -1,5 +1,16 @@
-import { addDays, diffDays, isScheduledDay, parseISODate, toISODate } from './date'
+import { addDays, diffDays, parseISODate, toISODate } from './date'
 import { getMatchedFeedingLog } from './feeding'
+import {
+  getFeedingScheduleForDate,
+  getFeedingScheduleHistory,
+  getWeightScheduleHistory,
+  isFeedingScheduledDay,
+} from './schedule'
+import {
+  feedingAmountLabels,
+  feedingAmountText,
+  formatMl,
+} from './feedingAmount'
 import type {
   AppSettings,
   DefecationLog,
@@ -23,8 +34,6 @@ export type ReportResult = {
   chatgptPackage: string
   json: Record<string, unknown>
 }
-
-const amountLabels = ['안 먹음', '맛만 봄', '소량', '보통', '많이', '거의 다 먹음']
 
 function inRange(date: string, startDate: string, endDate: string) {
   return date >= startDate && date <= endDate
@@ -67,8 +76,7 @@ function fixed(value: number, digits = 2) {
 }
 
 function formatFeeding(log: FeedingLog) {
-  const amount = log.amount === null ? '섭취량 미기록' : amountLabels[log.amount]
-  return `${log.date}${log.time ? ` ${log.time}` : ''} · ${log.food} · ${amount}${log.memo ? ` · ${log.memo}` : ''}`
+  return `${log.date}${log.time ? ` ${log.time}` : ''} · ${log.food} · ${feedingAmountText(log)}${log.memo ? ` · ${log.memo}` : ''}`
 }
 
 function reportInstruction() {
@@ -90,7 +98,7 @@ function reportInstruction() {
 
 TMI와 행동 기록도 참고하되 정상적인 크레스티드 게코 행동을 병적 행동으로 과잉 해석하지 말 것.
 
-현재 보고서는 로컬 프로토타입의 현행 스케줄 설정을 기준으로 예정일을 계산한다. 과거 급여 정책 변경 이력이 아직 연결되지 않았다면 그 한계를 고려하라.`
+보고서의 급여 및 체중 예정 회차는 날짜별 스케줄 변경 이력을 적용하여 계산한다.`
 }
 
 function answerTemplate() {
@@ -110,7 +118,8 @@ function answerTemplate() {
 
 ## C. 급여량과 섭취
 평가: [현재 적절 / 증가 고려 / 감소 고려 / 판단 보류]
-섭취 경향:
+체감 단계 경향:
+mL 기록 경향:
 관찰 사항:
 권장안:
 판단 신뢰도:
@@ -179,7 +188,7 @@ export function buildReport(
   const rangeDates = datesBetween(startDate, endDate)
 
   const scheduledFeedDates = rangeDates.filter((date) =>
-    isScheduledDay(date, settings.feedingStartDate, settings.feedingIntervalDays),
+    isFeedingScheduledDay(date, settings),
   )
   const matchedFeedings = scheduledFeedDates
     .map((date) => ({ date, log: getMatchedFeedingLog(date, feedingLogs, settings) }))
@@ -191,11 +200,17 @@ export function buildReport(
 
   const amountCounts = countBy(
     feedLogsInRange.filter((log) => log.amount !== null),
-    (log) => amountLabels[log.amount!],
+    (log) => feedingAmountLabels[log.amount!],
   )
 
   const recordedAmounts: number[] = feedLogsInRange.flatMap((log) =>
     log.amount === null ? [] : [Number(log.amount)],
+  )
+
+  const recordedMl: number[] = feedLogsInRange.flatMap((log) =>
+    typeof log.amountMl === 'number' && Number.isFinite(log.amountMl)
+      ? [log.amountMl]
+      : [],
   )
 
   const weights = weightLogs
@@ -246,21 +261,63 @@ export function buildReport(
 
   lines.push('## 1. 급여')
   lines.push('')
-  lines.push(`- 현재 설정 기준: ${settings.feedingIntervalDays}일마다 / 기본 ${settings.feedingTime}`)
-  lines.push(`- 다음 날 새벽 인정 마감: ${String(settings.feedingGraceUntilHour).padStart(2, '0')}:00`)
+  const feedingHistory = getFeedingScheduleHistory(settings)
+  const weightHistory = getWeightScheduleHistory(settings)
+
+  const reportEndSchedule =
+    getFeedingScheduleForDate(endDate, settings)
+
+  lines.push(
+    `- 보고서 종료일 기준 일정: ${
+      reportEndSchedule
+        ? `${reportEndSchedule.intervalDays}일마다 / 기본 ${reportEndSchedule.time}`
+        : '적용 일정 없음'
+    }`,
+  )
+  lines.push(
+    `- 종료일 기준 새벽 인정 마감: ${
+      reportEndSchedule
+        ? `${String(reportEndSchedule.graceUntilHour).padStart(2, '0')}:00`
+        : '해당 없음'
+    }`,
+  )
+  lines.push(`- 급여 스케줄 변경 기간: ${feedingHistory.length}개`)
   lines.push(`- 예정 회차: ${scheduledFeedDates.length}회`)
   lines.push(`- 완료 회차: ${completedScheduledFeedings.length}회`)
   lines.push(`- 미완료 회차: ${scheduledFeedDates.length - completedScheduledFeedings.length}회`)
   lines.push(`- 기간 내 실제 급여 기록: ${feedLogsInRange.length}건`)
   lines.push(
-    `- 평균 섭취 점수: ${
-      recordedAmounts.length ? `${fixed(avg(recordedAmounts)!, 2)} / 5` : '자료 부족'
+    `- 체감 단계 평균: ${
+      recordedAmounts.length
+        ? `${fixed(avg(recordedAmounts)!, 2)} / 5`
+        : '자료 부족'
     }`,
   )
+  lines.push(
+    `- mL 기록 평균: ${
+      recordedMl.length
+        ? `${formatMl(avg(recordedMl)!)} mL (${recordedMl.length}회)`
+        : '자료 없음'
+    }`,
+  )
+  if (recordedMl.length) {
+    lines.push(
+      `- mL 범위: ${formatMl(Math.min(...recordedMl))}~${formatMl(Math.max(...recordedMl))} mL`,
+    )
+  }
 
   if (amountCounts.length) {
     lines.push('- 섭취량 분포:')
     amountCounts.forEach(([label, count]) => lines.push(`  - ${label}: ${count}회`))
+  }
+
+  if (feedingHistory.length) {
+    lines.push('- 적용된 급여 스케줄 이력:')
+    feedingHistory.forEach((period) => {
+      lines.push(
+        `  - ${period.effectiveFrom}부터: ${period.intervalDays}일마다 / ${period.time} / 다음 날 ${String(period.graceUntilHour).padStart(2, '0')}:00까지 인정`,
+      )
+    })
   }
 
   if (matchedFeedings.length) {
@@ -269,7 +326,7 @@ export function buildReport(
       lines.push(
         `  - ${date}: ${
           log
-            ? `완료 → ${log.date}${log.time ? ` ${log.time}` : ''}, ${log.food}, ${log.amount === null ? '섭취량 미기록' : amountLabels[log.amount]}`
+            ? `완료 → ${log.date}${log.time ? ` ${log.time}` : ''}, ${log.food}, ${feedingAmountText(log)}`
             : '미완료'
         }`,
       )
@@ -279,6 +336,13 @@ export function buildReport(
   lines.push('')
   lines.push('## 2. 체중')
   lines.push('')
+  if (weightHistory.length) {
+    lines.push('- 체중 측정 스케줄 이력:')
+    weightHistory.forEach((period) => {
+      lines.push(`  - ${period.effectiveFrom}부터: ${period.intervalDays}일마다`)
+    })
+  }
+
   if (!weights.length) {
     lines.push('- 기간 내 체중 기록 없음')
   } else {
@@ -347,7 +411,8 @@ export function buildReport(
     const dayPoops = poops.filter((log) => log.date === date)
     const dayPresets = presets.filter((log) => log.date === date)
     const dayTmis = tmis.filter((log) => log.date === date)
-    const scheduled = isScheduledDay(date, settings.feedingStartDate, settings.feedingIntervalDays)
+    const scheduled = isFeedingScheduledDay(date, settings)
+    const daySchedule = getFeedingScheduleForDate(date, settings)
 
     const hasAny =
       feeds.length ||
@@ -367,7 +432,7 @@ export function buildReport(
           matched
             ? `완료 (${matched.date}${matched.time ? ` ${matched.time}` : ''})`
             : '예정 / 실제 완료 기록 없음'
-        }`,
+        } · 당시 정책 ${daySchedule?.intervalDays ?? '?'}일 간격 / ${daySchedule?.time ?? '시간 미상'}`,
       )
     }
     feeds.forEach((log) => lines.push(`- 실제 급여: ${formatFeeding(log)}`))
@@ -406,6 +471,10 @@ ${template}`
       adoptionDate: settings.adoptionDate,
     },
     currentSettings: settings,
+    scheduleHistory: {
+      feeding: feedingHistory,
+      weight: weightHistory,
+    },
     summary: {
       scheduledFeedingCount: scheduledFeedDates.length,
       completedScheduledFeedingCount: completedScheduledFeedings.length,

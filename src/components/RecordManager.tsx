@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react'
 import Card from './Card'
 import { getScheduledDateForFeedingLog } from '../lib/feeding'
+import {
+  feedingAmountLabels,
+  feedingAmountText,
+} from '../lib/feedingAmount'
 import type {
   AppSettings,
   DefecationLog,
@@ -37,6 +41,8 @@ type Props = {
   onDeleteDefecation: (id: string) => void
 }
 
+type FeedingAmountMode = 'qualitative' | 'ml' | 'both'
+
 type EditTarget =
   | { kind: 'feeding'; id: string }
   | { kind: 'weight'; id: string }
@@ -53,15 +59,6 @@ type ManagerItem = {
   summary: string
 }
 
-const amountLabels = [
-  '안 먹음',
-  '맛만 봄',
-  '소량',
-  '보통',
-  '많이',
-  '거의 다 먹음',
-]
-
 const groupLabels: Record<PresetSelection['group'], string> = {
   activity: '활동성',
   location: '위치',
@@ -76,9 +73,7 @@ function shortDate(date: string) {
 }
 
 function feedingSummary(log: FeedingLog) {
-  const amount =
-    log.amount === null ? '섭취량 미기록' : amountLabels[log.amount]
-  return `실제 ${shortDate(log.date)} ${log.time ?? '시간 미기록'} · ${log.food} · ${amount}`
+  return `실제 ${shortDate(log.date)} ${log.time ?? '시간 미기록'} · ${log.food} · ${feedingAmountText(log)}`
 }
 
 export default function RecordManager({
@@ -445,10 +440,22 @@ function FeedingEditor({
   onCancel: () => void
   onSave: (log: FeedingLog) => void
 }) {
+  const initialAmountMode: FeedingAmountMode =
+    typeof log.amountMl === 'number'
+      ? log.amount !== null
+        ? 'both'
+        : 'ml'
+      : 'qualitative'
+
   const [date, setDate] = useState(log.date)
   const [time, setTime] = useState(log.time ?? '')
   const [food, setFood] = useState(log.food)
+  const [amountMode, setAmountMode] =
+    useState<FeedingAmountMode>(initialAmountMode)
   const [amount, setAmount] = useState<FeedingAmount | null>(log.amount)
+  const [amountMl, setAmountMl] = useState(
+    typeof log.amountMl === 'number' ? String(log.amountMl) : '',
+  )
   const [memo, setMemo] = useState(log.memo ?? '')
 
   return (
@@ -469,27 +476,70 @@ function FeedingEditor({
       </div>
 
       <div className="field">
-        <span>섭취량</span>
-        <div className="chip-wrap">
+        <span>급여량 기록 방식</span>
+        <div className="feeding-mode-toggle">
           <button
             type="button"
-            className={amount === null ? 'chip selected' : 'chip'}
-            onClick={() => setAmount(null)}
+            className={amountMode === 'qualitative' ? 'active' : ''}
+            onClick={() => setAmountMode('qualitative')}
           >
-            미기록
+            체감 단계
           </button>
-          {amountLabels.map((label, index) => (
-            <button
-              type="button"
-              key={label}
-              className={amount === index ? 'chip selected' : 'chip'}
-              onClick={() => setAmount(index as FeedingAmount)}
-            >
-              {label}
-            </button>
-          ))}
+          <button
+            type="button"
+            className={amountMode === 'ml' ? 'active' : ''}
+            onClick={() => setAmountMode('ml')}
+          >
+            mL
+          </button>
+          <button
+            type="button"
+            className={amountMode === 'both' ? 'active' : ''}
+            onClick={() => setAmountMode('both')}
+          >
+            둘 다
+          </button>
         </div>
       </div>
+
+      {(amountMode === 'qualitative' || amountMode === 'both') && (
+        <div className="field editor-memo">
+          <span>체감 섭취 단계</span>
+          <div className="chip-wrap">
+            <button
+              type="button"
+              className={amount === null ? 'chip selected' : 'chip'}
+              onClick={() => setAmount(null)}
+            >
+              미기록
+            </button>
+            {feedingAmountLabels.map((label, index) => (
+              <button
+                type="button"
+                key={label}
+                className={amount === index ? 'chip selected' : 'chip'}
+                onClick={() => setAmount(index as FeedingAmount)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(amountMode === 'ml' || amountMode === 'both') && (
+        <label className="field editor-memo">
+          <span>실제 급여량 (mL)</span>
+          <input
+            type="number"
+            min="0"
+            step="0.1"
+            inputMode="decimal"
+            value={amountMl}
+            onChange={(e) => setAmountMl(e.target.value)}
+          />
+        </label>
+      )}
 
       <label className="field editor-memo">
         <span>메모</span>
@@ -505,12 +555,35 @@ function FeedingEditor({
         onCancel={onCancel}
         onSave={() => {
           if (!date || !food.trim()) return
+
+          const parsedMl = Number(amountMl)
+          const needsMl =
+            amountMode === 'ml' || amountMode === 'both'
+
+          if (
+            needsMl &&
+            (
+              !amountMl.trim() ||
+              !Number.isFinite(parsedMl) ||
+              parsedMl < 0
+            )
+          ) {
+            return
+          }
+
           onSave({
             ...log,
             date,
             time: time || undefined,
             food: food.trim(),
-            amount,
+            amount:
+              amountMode === 'ml'
+                ? null
+                : amount,
+            amountMl:
+              needsMl
+                ? parsedMl
+                : undefined,
             memo: memo.trim() || undefined,
           })
         }}

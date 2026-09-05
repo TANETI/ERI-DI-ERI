@@ -6,7 +6,20 @@ export type FeedingLog = {
   date: string
   time?: string
   food: string
+
+  /**
+   * 체감 섭취 단계.
+   * 0=안 먹음, 1=맛만 봄, 2=소량, 3=보통, 4=많이, 5=거의 다 먹음.
+   * 기존 기록과 기본 입력 방식은 이 값을 사용한다.
+   */
   amount: FeedingAmount | null
+
+  /**
+   * 실제 급여량을 계량하기 시작했을 때 사용할 선택적 mL 값.
+   * amount와 amountMl은 둘 다 기록할 수도 있다.
+   */
+  amountMl?: number
+
   memo?: string
 }
 
@@ -84,6 +97,20 @@ export type WeatherAdvice = {
   level: 'info' | 'check' | 'attention'
 }
 
+export type FeedingSchedulePeriod = {
+  id: string
+  effectiveFrom: string
+  intervalDays: number
+  time: string
+  graceUntilHour: number
+}
+
+export type WeightSchedulePeriod = {
+  id: string
+  effectiveFrom: string
+  intervalDays: number
+}
+
 export type AppSettings = {
   adoptionDate: string
   feedingStartDate: string
@@ -100,4 +127,7 @@ export type AppSettings = {
   weatherLatitude?: number
   weatherLongitude?: number
   weatherAlertsEnabled: boolean
+
+  feedingScheduleHistory: FeedingSchedulePeriod[]
+  weightScheduleHistory: WeightSchedulePeriod[]
 }

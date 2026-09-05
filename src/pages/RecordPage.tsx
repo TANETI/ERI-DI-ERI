@@ -14,6 +14,7 @@ import type {
 } from '../types'
 
 type DetailSection = 'feeding' | 'weight' | 'defecation' | 'tmi' | null
+type FeedingAmountMode = 'qualitative' | 'ml' | 'both'
 
 type Props = {
   initialDate?: string
@@ -124,7 +125,10 @@ export default function RecordPage({
   const [time, setTime] = useState('21:00')
 
   // 요청 반영: 따로 선택하지 않으면 '보통'(3)으로 저장.
+  const [amountMode, setAmountMode] =
+    useState<FeedingAmountMode>('qualitative')
   const [amount, setAmount] = useState<FeedingAmount | null>(3)
+  const [amountMl, setAmountMl] = useState('')
 
   const [weight, setWeight] = useState('')
   const [tmi, setTmi] = useState('')
@@ -202,21 +206,48 @@ export default function RecordPage({
       return
     }
 
+    const parsedMl = Number(amountMl)
+    const needsMl = amountMode === 'ml' || amountMode === 'both'
+
+    if (
+      needsMl &&
+      (
+        !amountMl.trim() ||
+        !Number.isFinite(parsedMl) ||
+        parsedMl < 0
+      )
+    ) {
+      flash('mL 값을 확인해 주세요.')
+      return
+    }
+
     onAddFeeding({
       id: crypto.randomUUID(),
       date,
       time: time || undefined,
       food: food.trim(),
-      amount,
+      amount:
+        amountMode === 'ml'
+          ? null
+          : amount,
+      amountMl:
+        needsMl
+          ? parsedMl
+          : undefined,
     })
 
+    setAmountMode('qualitative')
     setAmount(3)
+    setAmountMl('')
     setOpenSection(null)
-    flash(
-      amount === 3
-        ? '급여를 “보통” 섭취로 저장했어요.'
-        : '급여 기록을 저장했어요.',
-    )
+
+    if (amountMode === 'qualitative' && amount === 3) {
+      flash('급여를 “보통” 섭취로 저장했어요.')
+    } else if (amountMode === 'ml') {
+      flash(`급여량 ${parsedMl} mL를 저장했어요.`)
+    } else {
+      flash('급여 기록을 저장했어요.')
+    }
   }
 
   const saveWeight = () => {
@@ -403,32 +434,80 @@ export default function RecordPage({
           </div>
 
           <div className="field">
-            <span>섭취량</span>
-            <p className="field-help">
-              따로 고르지 않으면 <strong>보통</strong>으로 저장돼요.
-            </p>
-
-            <div className="chip-wrap">
+            <span>급여량 기록 방식</span>
+            <div
+              className="feeding-mode-toggle"
+              role="group"
+              aria-label="급여량 기록 방식"
+            >
               <button
                 type="button"
-                className={amount === null ? 'chip selected' : 'chip'}
-                onClick={() => setAmount(null)}
+                className={amountMode === 'qualitative' ? 'active' : ''}
+                onClick={() => setAmountMode('qualitative')}
               >
-                미기록
+                체감 단계
               </button>
+              <button
+                type="button"
+                className={amountMode === 'ml' ? 'active' : ''}
+                onClick={() => setAmountMode('ml')}
+              >
+                mL
+              </button>
+              <button
+                type="button"
+                className={amountMode === 'both' ? 'active' : ''}
+                onClick={() => setAmountMode('both')}
+              >
+                둘 다
+              </button>
+            </div>
+            <p className="field-help">
+              기본은 <strong>체감 단계 · 보통</strong>이에요.
+              나중에 실제 양을 재기 시작하면 mL만, 또는 둘 다 기록할 수 있어요.
+            </p>
+          </div>
 
-              {amountLabels.map((label, index) => (
+          {(amountMode === 'qualitative' || amountMode === 'both') && (
+            <div className="field feeding-amount-section">
+              <span>체감 섭취 단계</span>
+              <div className="chip-wrap">
                 <button
                   type="button"
-                  key={label}
-                  className={amount === index ? 'chip selected' : 'chip'}
-                  onClick={() => setAmount(index as FeedingAmount)}
+                  className={amount === null ? 'chip selected' : 'chip'}
+                  onClick={() => setAmount(null)}
                 >
-                  {label}
+                  미기록
                 </button>
-              ))}
+
+                {amountLabels.map((label, index) => (
+                  <button
+                    type="button"
+                    key={label}
+                    className={amount === index ? 'chip selected' : 'chip'}
+                    onClick={() => setAmount(index as FeedingAmount)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {(amountMode === 'ml' || amountMode === 'both') && (
+            <label className="field feeding-amount-section">
+              <span>실제 급여량 (mL)</span>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                inputMode="decimal"
+                value={amountMl}
+                onChange={(event) => setAmountMl(event.target.value)}
+                placeholder="예: 1.5"
+              />
+            </label>
+          )}
 
           <button
             type="button"

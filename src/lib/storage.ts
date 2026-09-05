@@ -3,9 +3,11 @@ import type {
   DefecationLog,
   EnvironmentLog,
   FeedingLog,
+  FeedingSchedulePeriod,
   PresetSelection,
   TmiLog,
   WeightLog,
+  WeightSchedulePeriod,
 } from '../types'
 import {
   seedDefecationLogs,
@@ -37,6 +39,8 @@ export const defaultSettings: AppSettings = {
   weightIntervalDays: 7,
   fontPreset: 'system',
   weatherAlertsEnabled: true,
+  feedingScheduleHistory: [],
+  weightScheduleHistory: [],
 }
 
 function load<T>(key: string, fallback: T): T {
@@ -53,17 +57,80 @@ function save<T>(key: string, value: T) {
 }
 
 function normalizeSettings(value: Partial<AppSettings>): AppSettings {
+  const feedingIntervalDays = Math.max(
+    1,
+    Number(value.feedingIntervalDays ?? defaultSettings.feedingIntervalDays),
+  )
+  const feedingGraceUntilHour = Math.min(
+    12,
+    Math.max(
+      0,
+      Number(
+        value.feedingGraceUntilHour ??
+          defaultSettings.feedingGraceUntilHour,
+      ),
+    ),
+  )
+  const weightIntervalDays = Math.max(
+    1,
+    Number(value.weightIntervalDays ?? defaultSettings.weightIntervalDays),
+  )
+
+  const feedingStartDate =
+    value.feedingStartDate ?? defaultSettings.feedingStartDate
+  const feedingTime =
+    value.feedingTime ?? defaultSettings.feedingTime
+
+  const storedFeedingHistory =
+    (value.feedingScheduleHistory as FeedingSchedulePeriod[] | undefined) ?? []
+
+  const feedingScheduleHistory: FeedingSchedulePeriod[] =
+    storedFeedingHistory.length
+      ? [...storedFeedingHistory].sort((a, b) =>
+          a.effectiveFrom.localeCompare(b.effectiveFrom),
+        )
+      : [
+          {
+            id: `migrated-feeding-${feedingStartDate}`,
+            effectiveFrom: feedingStartDate,
+            intervalDays: feedingIntervalDays,
+            time: feedingTime,
+            graceUntilHour: feedingGraceUntilHour,
+          },
+        ]
+
+  const storedWeightHistory =
+    (value.weightScheduleHistory as WeightSchedulePeriod[] | undefined) ?? []
+
+  const weightScheduleHistory: WeightSchedulePeriod[] =
+    storedWeightHistory.length
+      ? [...storedWeightHistory].sort((a, b) =>
+          a.effectiveFrom.localeCompare(b.effectiveFrom),
+        )
+      : value.weightStartDate
+        ? [
+            {
+              id: `migrated-weight-${value.weightStartDate}`,
+              effectiveFrom: value.weightStartDate,
+              intervalDays: weightIntervalDays,
+            },
+          ]
+        : []
+
   return {
     ...defaultSettings,
     ...value,
-    feedingIntervalDays: Math.max(1, Number(value.feedingIntervalDays ?? defaultSettings.feedingIntervalDays)),
-    feedingGraceUntilHour: Math.min(
-      12,
-      Math.max(0, Number(value.feedingGraceUntilHour ?? defaultSettings.feedingGraceUntilHour)),
-    ),
-    weightIntervalDays: Math.max(1, Number(value.weightIntervalDays ?? defaultSettings.weightIntervalDays)),
+    feedingStartDate,
+    feedingIntervalDays,
+    feedingTime,
+    feedingGraceUntilHour,
+    weightIntervalDays,
     fontPreset: value.fontPreset ?? defaultSettings.fontPreset,
-    weatherAlertsEnabled: value.weatherAlertsEnabled ?? defaultSettings.weatherAlertsEnabled,
+    weatherAlertsEnabled:
+      value.weatherAlertsEnabled ??
+      defaultSettings.weatherAlertsEnabled,
+    feedingScheduleHistory,
+    weightScheduleHistory,
   }
 }
 

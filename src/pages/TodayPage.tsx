@@ -2,20 +2,24 @@ import { useRef, useState } from 'react'
 import Card from '../components/Card'
 import WeatherContextCard from '../components/WeatherContextCard'
 import {
-  addDays,
   diffDays,
   formatKoreanDate,
-  isScheduledDay,
-  parseISODate,
   toISODate,
 } from '../lib/date'
 import { getMatchedFeedingLog } from '../lib/feeding'
 import {
+  getFeedingScheduleForDate,
+  getNextFeedingScheduledDate,
+  isFeedingScheduledDay,
+} from '../lib/schedule'
+import {
+  getMatchedWeightLog,
   getNextWeightScheduledDate,
-  hasWeightLogOnDate,
+  getOldestOutstandingWeightDueDate,
   isWeightScheduledDay,
   latestWeightLog,
 } from '../lib/weight'
+import { feedingAmountText } from '../lib/feedingAmount'
 import type { AppSettings, FeedingLog, WeightLog } from '../types'
 
 type Props = {
@@ -23,21 +27,6 @@ type Props = {
   feedingLogs: FeedingLog[]
   weightLogs: WeightLog[]
   onQuickRecord: () => void
-}
-
-function nextScheduledDate(todayIso: string, startIso: string, interval: number): string {
-  let cursor = parseISODate(todayIso)
-  for (let i = 0; i < 365; i++) {
-    const iso = toISODate(cursor)
-    if (isScheduledDay(iso, startIso, interval)) return iso
-    cursor = addDays(cursor, 1)
-  }
-  return todayIso
-}
-
-const amountLabel = (amount: FeedingLog['amount']) => {
-  if (amount === null) return '섭취량 미기록'
-  return `섭취 ${amount}/5`
 }
 
 export default function TodayPage({
@@ -49,6 +38,7 @@ export default function TodayPage({
   const geckoRef = useRef<HTMLButtonElement>(null)
   const [geckoPosition, setGeckoPosition] = useState<{ x: number; y: number } | null>(null)
   const [geckoAngle, setGeckoAngle] = useState(0)
+  const [geckoDurationMs, setGeckoDurationMs] = useState(312)
   const [geckoMoving, setGeckoMoving] = useState(false)
   const [geckoPopped, setGeckoPopped] = useState(false)
 
@@ -94,6 +84,18 @@ export default function TodayPage({
       y: Math.round(rect.top),
     }
     const target = pickGeckoTarget(current.x, current.y)
+    const distance = Math.hypot(
+      target.x - current.x,
+      target.y - current.y,
+    )
+
+    // 가까우면 빠르게, 멀수록 눈으로 쫓을 수 있을 만큼 조금 더 오래.
+    // 약 1450px/s 정도의 체감 속도 + 312~820ms 범위.
+    const durationMs = Math.round(
+      Math.min(820, Math.max(312, distance / 1.45)),
+    )
+    setGeckoDurationMs(durationMs)
+
     const prefersReducedMotion = window.matchMedia(
       '(prefers-reduced-motion: reduce)',
     ).matches
@@ -138,16 +140,12 @@ export default function TodayPage({
   const todayIso = toISODate(today)
   const dayTogether = diffDays(settings.adoptionDate, todayIso) + 1
 
-  const feedingToday = isScheduledDay(
-    todayIso,
-    settings.feedingStartDate,
-    settings.feedingIntervalDays,
-  )
-  const nextFeeding = nextScheduledDate(
-    todayIso,
-    settings.feedingStartDate,
-    settings.feedingIntervalDays,
-  )
+  const feedingToday = isFeedingScheduledDay(todayIso, settings)
+  const todayFeedingSchedule = getFeedingScheduleForDate(todayIso, settings)
+  const nextFeeding = getNextFeedingScheduledDate(todayIso, settings)
+  const nextFeedingSchedule = nextFeeding
+    ? getFeedingScheduleForDate(nextFeeding, settings)
+    : null
   const matchedTodayFeeding = feedingToday
     ? getMatchedFeedingLog(todayIso, feedingLogs, settings)
     : undefined
@@ -155,7 +153,14 @@ export default function TodayPage({
   const latestWeight = latestWeightLog(weightLogs)
   const weightScheduleStarted = Boolean(settings.weightStartDate)
   const weightToday = isWeightScheduledDay(todayIso, settings)
-  const todayWeightLogged = hasWeightLogOnDate(todayIso, weightLogs)
+  const matchedTodayWeight = weightToday
+    ? getMatchedWeightLog(todayIso, weightLogs, settings)
+    : undefined
+  const overdueWeightDate = getOldestOutstandingWeightDueDate(
+    todayIso,
+    weightLogs,
+    settings,
+  )
   const nextWeight = getNextWeightScheduledDate(todayIso, settings)
 
   return (
@@ -172,7 +177,13 @@ export default function TodayPage({
           className={`gecko-badge gecko-easter-egg ${geckoPosition ? 'escaped' : ''} ${geckoMoving ? 'moving' : ''} ${geckoPopped ? 'popped' : ''}`}
           onClick={runGecko}
           onTransitionEnd={(event) => {
-            if (event.propertyName !== 'left' || !geckoMoving) return
+            if (
+              !['left', 'top'].includes(event.propertyName) ||
+              !geckoMoving
+            ) {
+              return
+            }
+
             setGeckoMoving(false)
             setGeckoPopped(true)
             window.setTimeout(() => setGeckoPopped(false), 420)
@@ -180,9 +191,15 @@ export default function TodayPage({
           aria-label="도망가는 에리 잡기"
           title="에리?"
           style={
-            geckoPosition
-              ? { left: `${geckoPosition.x}px`, top: `${geckoPosition.y}px` }
-              : undefined
+            {
+              ...(geckoPosition
+                ? {
+                    left: `${geckoPosition.x}px`,
+                    top: `${geckoPosition.y}px`,
+                  }
+                : {}),
+              '--gecko-duration': `${geckoDurationMs}ms`,
+            } as any
           }
         >
           <span
@@ -197,6 +214,13 @@ export default function TodayPage({
           {geckoPopped && <span className="gecko-pop" aria-hidden="true">쀽!</span>}
         </button>
       </header>
+
+      <WeatherContextCard
+        date={todayIso}
+        settings={settings}
+        title="오늘 날씨"
+        compact
+      />
 
       <Card className="photo-card">
         <div className="photo-placeholder">
@@ -215,19 +239,23 @@ export default function TodayPage({
               <p className="big-number">
                 {matchedTodayFeeding
                   ? `${matchedTodayFeeding.date} ${matchedTodayFeeding.time ?? ''}`.trim()
-                  : settings.feedingTime}
+                  : todayFeedingSchedule?.time ?? settings.feedingTime}
               </p>
               <p className="subtle">
                 {matchedTodayFeeding
-                  ? `${matchedTodayFeeding.food} · ${amountLabel(matchedTodayFeeding.amount)}`
-                  : `다음 날 ${String(settings.feedingGraceUntilHour).padStart(2, '0')}:00까지 같은 회차로 인정`}
+                  ? `${matchedTodayFeeding.food} · ${feedingAmountText(matchedTodayFeeding)}`
+                  : `다음 날 ${String(todayFeedingSchedule?.graceUntilHour ?? settings.feedingGraceUntilHour).padStart(2, '0')}:00까지 같은 회차로 인정`}
               </p>
             </>
           ) : (
             <>
               <div className="status-badge">다음 급여</div>
-              <p className="big-number">{nextFeeding}</p>
-              <p className="subtle">{settings.feedingTime} · {settings.feedingIntervalDays}일 간격</p>
+              <p className="big-number">{nextFeeding ?? '—'}</p>
+              <p className="subtle">
+                {nextFeedingSchedule?.time ?? settings.feedingTime}
+                {' · '}
+                {nextFeedingSchedule?.intervalDays ?? settings.feedingIntervalDays}일 간격
+              </p>
             </>
           )}
         </Card>
@@ -241,20 +269,32 @@ export default function TodayPage({
                 첫 체중을 기록하면 그 날짜부터 {settings.weightIntervalDays}일 간격 측정 일정이 시작돼요.
               </p>
             </>
+          ) : overdueWeightDate && overdueWeightDate < todayIso ? (
+            <>
+              <div className="status-badge due">체중 측정 지연</div>
+              <p className="big-number">{overdueWeightDate}</p>
+              <p className="subtle">
+                예정일은 그대로 유지돼요. 지금 측정해도 이 회차의 늦은 측정으로 기록됩니다.
+              </p>
+            </>
           ) : weightToday ? (
             <>
-              <div className={todayWeightLogged ? 'status-badge' : 'status-badge due'}>
-                {todayWeightLogged ? '오늘 측정 완료' : '오늘 측정일'}
+              <div className={matchedTodayWeight ? 'status-badge' : 'status-badge due'}>
+                {matchedTodayWeight ? '오늘 회차 완료' : '오늘 측정일'}
               </div>
               <p className="big-number">
-                {todayWeightLogged
-                  ? `${weightLogs.find((log) => log.date === todayIso)?.weight.toFixed(1)} g`
+                {matchedTodayWeight
+                  ? `${matchedTodayWeight.weight.toFixed(1)} g`
                   : latestWeight
                     ? `${latestWeight.weight.toFixed(1)} g`
                     : '—'}
               </p>
               <p className="subtle">
-                {todayWeightLogged ? '오늘 체중 기록 완료' : `최근 체중 ${latestWeight ? `${latestWeight.weight.toFixed(1)} g` : '없음'}`}
+                {matchedTodayWeight
+                  ? matchedTodayWeight.date === todayIso
+                    ? '오늘 체중 기록 완료'
+                    : `${matchedTodayWeight.date}에 늦게 측정해 이 회차를 완료했어요.`
+                  : `최근 체중 ${latestWeight ? `${latestWeight.weight.toFixed(1)} g` : '없음'}`}
               </p>
             </>
           ) : (
@@ -268,8 +308,6 @@ export default function TodayPage({
           )}
         </Card>
       </div>
-
-      <WeatherContextCard date={todayIso} settings={settings} />
 
       <button className="primary-action" onClick={onQuickRecord}>
         + 오늘 기록하기
@@ -289,7 +327,7 @@ export default function TodayPage({
                     <strong>{log.date}{log.time ? ` · ${log.time}` : ''}</strong>
                     <span>{log.food}</span>
                   </div>
-                  <span className="pill">{amountLabel(log.amount)}</span>
+                  <span className="pill">{feedingAmountText(log)}</span>
                 </div>
               ))}
           </div>

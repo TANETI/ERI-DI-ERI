@@ -12,12 +12,14 @@ type Props = {
   date: string
   settings: AppSettings
   compact?: boolean
+  title?: string
 }
 
 export default function WeatherContextCard({
   date,
   settings,
   compact = false,
+  title = '지역 날씨',
 }: Props) {
   const location = useMemo(
     () => weatherLocationFromSettings(settings),
@@ -78,7 +80,7 @@ export default function WeatherContextCard({
 
   if (!location) {
     return (
-      <Card title="지역 날씨" icon="☁️" className={className}>
+      <Card title={title} icon="☁️" className={className}>
         <p className="empty">더보기 → 설정에서 우리 집 지역을 먼저 지정해 주세요.</p>
       </Card>
     )
@@ -86,7 +88,7 @@ export default function WeatherContextCard({
 
   if (loading) {
     return (
-      <Card title="지역 날씨" icon="☁️" className={className}>
+      <Card title={title} icon="☁️" className={className}>
         <p className="empty">{location.label} 날씨를 불러오는 중…</p>
       </Card>
     )
@@ -94,7 +96,7 @@ export default function WeatherContextCard({
 
   if (error || !snapshot) {
     return (
-      <Card title="지역 날씨" icon="☁️" className={className}>
+      <Card title={title} icon="☁️" className={className}>
         <p className="empty">{error || '날씨 자료가 없습니다.'}</p>
       </Card>
     )
@@ -103,7 +105,7 @@ export default function WeatherContextCard({
   const advices = buildWeatherAdvice(snapshot)
 
   return (
-    <Card title="지역 날씨" icon="☁️" className={className}>
+    <Card title={title} icon="☁️" className={className}>
       <div className="weather-summary">
         <div>
           <span>지역</span>

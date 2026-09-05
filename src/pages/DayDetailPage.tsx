@@ -1,6 +1,7 @@
 import Card from '../components/Card'
 import { diffDays, isScheduledDay } from '../lib/date'
 import { getMatchedFeedingLog, getScheduledDateForFeedingLog } from '../lib/feeding'
+import { feedingAmountText } from '../lib/feedingAmount'
 import type {
   AppSettings,
   DefecationLog,
@@ -23,8 +24,6 @@ type Props = {
   onBack: () => void
   onAddRecord: (date: string) => void
 }
-
-const amountLabels = ['안 먹음', '맛만 봄', '소량', '보통', '많이', '거의 다 먹음']
 
 export default function DayDetailPage({
   date,
@@ -91,7 +90,7 @@ export default function DayDetailPage({
             <div className="detail-item" key={feed.id}>
               <strong>{feed.food}</strong>
               <span>{feed.time ? feed.time : '시간 미기록'}</span>
-              <span>섭취량: {feed.amount === null ? '미기록' : amountLabels[feed.amount]}</span>
+              <span>섭취량: {feedingAmountText(feed)}</span>
               {occurrence && occurrence !== feed.date && (
                 <span className="linked-session">→ {occurrence} 급여 회차로 인정</span>
               )}

@@ -4,7 +4,6 @@ import WeatherContextCard from '../components/WeatherContextCard'
 import {
   addDays,
   diffDays,
-  isScheduledDay,
   monthGrid,
   parseISODate,
   toISODate,
@@ -13,7 +12,15 @@ import {
   getMatchedFeedingLog,
   getScheduledDateForFeedingLog,
 } from '../lib/feeding'
-import { isWeightScheduledDay } from '../lib/weight'
+import { feedingAmountText } from '../lib/feedingAmount'
+import {
+  getFeedingScheduleForDate,
+  isFeedingScheduledDay,
+} from '../lib/schedule'
+import {
+  getMatchedWeightLog,
+  isWeightScheduledDay,
+} from '../lib/weight'
 import type {
   AppSettings,
   DefecationLog,
@@ -34,8 +41,6 @@ type Props = {
   defecationLogs: DefecationLog[]
   onAddRecord: (date: string) => void
 }
-
-const amountLabels = ['안 먹음', '맛만 봄', '소량', '보통', '많이', '거의 다 먹음']
 
 function formatLongDate(iso: string) {
   const date = parseISODate(iso)
@@ -232,7 +237,8 @@ function DailyView({
   const presets = presetSelections.filter((x) => x.date === date)
   const poops = defecationLogs.filter((x) => x.date === date)
 
-  const scheduled = isScheduledDay(date, settings.feedingStartDate, settings.feedingIntervalDays)
+  const scheduled = isFeedingScheduledDay(date, settings)
+  const feedingSchedule = getFeedingScheduleForDate(date, settings)
   const matchedFeed = scheduled ? getMatchedFeedingLog(date, feedingLogs, settings) : undefined
   const extraFeeds = feedsOnDate.filter(
     (feed) => getScheduledDateForFeedingLog(feed, settings) === null,
@@ -241,6 +247,9 @@ function DailyView({
   const dayTogether = diffDays(settings.adoptionDate, date) + 1
   const isToday = date === todayIso
   const weightScheduled = isWeightScheduledDay(date, settings)
+  const matchedWeight = weightScheduled
+    ? getMatchedWeightLog(date, weightLogs, settings)
+    : undefined
   const weightDone = weights.length > 0
 
 
@@ -307,8 +316,7 @@ function DailyView({
                     <strong>급여 완료</strong>
                     <small>{formatActualFeeding(matchedFeed)}</small>
                     <small>
-                      {matchedFeed.food}
-                      {matchedFeed.amount === null ? ' · 섭취량 미기록' : ` · ${amountLabels[matchedFeed.amount]}`}
+                      {matchedFeed.food} · {feedingAmountText(matchedFeed)}
                     </small>
                   </div>
                 </div>
@@ -317,8 +325,10 @@ function DailyView({
                   <span>☐</span>
                   <div>
                     <strong>급여 예정</strong>
-                    <small>기본 시간 {settings.feedingTime}</small>
-                    <small>다음 날 {String(settings.feedingGraceUntilHour).padStart(2, '0')}:00까지 같은 회차로 인정</small>
+                    <small>기본 시간 {feedingSchedule?.time ?? settings.feedingTime}</small>
+                    <small>
+                      다음 날 {String(feedingSchedule?.graceUntilHour ?? settings.feedingGraceUntilHour).padStart(2, '0')}:00까지 같은 회차로 인정
+                    </small>
                   </div>
                 </div>
               )
@@ -344,11 +354,17 @@ function DailyView({
               icon="⚖"
               title={weightScheduled ? '체중 · 측정일' : '체중'}
               value={
-                weightDone
-                  ? `${weights[weights.length - 1].weight.toFixed(1)} g`
-                  : weightScheduled
-                    ? '측정 예정'
-                    : '기록 없음'
+                matchedWeight
+                  ? `${matchedWeight.weight.toFixed(1)} g${
+                      matchedWeight.date !== date
+                        ? ` · ${matchedWeight.date} 측정`
+                        : ''
+                    }`
+                  : weightDone
+                    ? `${weights[weights.length - 1].weight.toFixed(1)} g`
+                    : weightScheduled
+                      ? '측정 예정'
+                      : '기록 없음'
               }
             />
             <DailyStat
@@ -472,9 +488,12 @@ function MonthlyView({
           if (!date) return <div className="calendar-cell empty-cell" key={`empty-${index}`} />
 
           const iso = toISODate(date)
-          const scheduled = isScheduledDay(iso, settings.feedingStartDate, settings.feedingIntervalDays)
+          const scheduled = isFeedingScheduledDay(iso, settings)
           const matchedFeed = scheduled ? getMatchedFeedingLog(iso, feedingLogs, settings) : undefined
           const weightScheduled = isWeightScheduledDay(iso, settings)
+          const matchedWeight = weightScheduled
+            ? getMatchedWeightLog(iso, weightLogs, settings)
+            : undefined
           const hasWeight = weightLogs.some((x) => x.date === iso)
           const hasPoop = defecationLogs.some((x) => x.date === iso)
           const hasTmi = tmiLogs.some((x) => x.date === iso)
@@ -495,8 +514,16 @@ function MonthlyView({
               <span className="monthly-icons">
                 {scheduled && <span title={matchedFeed ? '급여 완료' : '급여 예정'}>{matchedFeed ? '☑🍚' : '☐🍚'}</span>}
                 {(weightScheduled || hasWeight) && (
-                  <span title={hasWeight ? '체중 측정 완료' : '체중 측정 예정'}>
-                    {hasWeight ? '☑⚖' : '☐⚖'}
+                  <span
+                    title={
+                      matchedWeight
+                        ? '체중 측정 회차 완료'
+                        : hasWeight
+                          ? '추가 체중 측정'
+                          : '체중 측정 예정'
+                    }
+                  >
+                    {matchedWeight ? '☑⚖' : hasWeight ? '⚖' : '☐⚖'}
                   </span>
                 )}
                 {hasPoop && <span title="배변">💩</span>}
