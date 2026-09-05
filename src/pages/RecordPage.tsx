@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import Card from '../components/Card'
+import RecordManager from '../components/RecordManager'
 import { toISODate } from '../lib/date'
 import type {
+  AppSettings,
   DefecationLog,
   FeedingAmount,
   FeedingLog,
@@ -12,11 +14,33 @@ import type {
 
 type Props = {
   initialDate?: string
+  settings: AppSettings
+
+  feedingLogs: FeedingLog[]
+  weightLogs: WeightLog[]
+  tmiLogs: TmiLog[]
+  presetSelections: PresetSelection[]
+  defecationLogs: DefecationLog[]
+
   onAddFeeding: (log: FeedingLog) => void
+  onUpdateFeeding: (log: FeedingLog) => void
+  onDeleteFeeding: (id: string) => void
+
   onAddWeight: (log: WeightLog) => void
+  onUpdateWeight: (log: WeightLog) => void
+  onDeleteWeight: (id: string) => void
+
   onAddTmi: (log: TmiLog) => void
+  onUpdateTmi: (log: TmiLog) => void
+  onDeleteTmi: (id: string) => void
+
   onAddPreset: (log: PresetSelection) => void
+  onUpdatePreset: (log: PresetSelection) => void
+  onDeletePreset: (id: string) => void
+
   onAddDefecation: (log: DefecationLog) => void
+  onUpdateDefecation: (log: DefecationLog) => void
+  onDeleteDefecation: (id: string) => void
 }
 
 const amountLabels = ['안 먹음', '맛만 봄', '소량', '보통', '많이', '거의 다 먹음']
@@ -26,17 +50,33 @@ const healthPresets = ['특이사항 없음', '식욕 변화', '움직임 변화
 
 export default function RecordPage({
   initialDate,
+  settings,
+  feedingLogs,
+  weightLogs,
+  tmiLogs,
+  presetSelections,
+  defecationLogs,
   onAddFeeding,
+  onUpdateFeeding,
+  onDeleteFeeding,
   onAddWeight,
+  onUpdateWeight,
+  onDeleteWeight,
   onAddTmi,
+  onUpdateTmi,
+  onDeleteTmi,
   onAddPreset,
+  onUpdatePreset,
+  onDeletePreset,
   onAddDefecation,
+  onUpdateDefecation,
+  onDeleteDefecation,
 }: Props) {
   const today = toISODate(new Date())
   const [date, setDate] = useState(initialDate ?? today)
   const [food, setFood] = useState('G-REP Insect')
   const [time, setTime] = useState('21:00')
-  const [amount, setAmount] = useState<FeedingAmount>(3)
+  const [amount, setAmount] = useState<FeedingAmount | null>(null)
   const [weight, setWeight] = useState('')
   const [tmi, setTmi] = useState('')
   const [saved, setSaved] = useState('')
@@ -90,8 +130,9 @@ export default function RecordPage({
     <main className="page">
       <header className="section-header">
         <div>
-          <p className="eyebrow">10~20초 빠른 입력</p>
-          <h1>오늘 기록</h1>
+          <p className="eyebrow">추가 · 수정 · 삭제</p>
+          <h1>기록</h1>
+          <p className="subtle">날짜를 고르고 기존 기록을 고치거나 새 기록을 추가할 수 있어요.</p>
         </div>
       </header>
 
@@ -101,6 +142,27 @@ export default function RecordPage({
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
       </Card>
+
+
+      <RecordManager
+        date={date}
+        settings={settings}
+        feedingLogs={feedingLogs}
+        weightLogs={weightLogs}
+        tmiLogs={tmiLogs}
+        presetSelections={presetSelections}
+        defecationLogs={defecationLogs}
+        onUpdateFeeding={onUpdateFeeding}
+        onDeleteFeeding={onDeleteFeeding}
+        onUpdateWeight={onUpdateWeight}
+        onDeleteWeight={onDeleteWeight}
+        onUpdateTmi={onUpdateTmi}
+        onDeleteTmi={onDeleteTmi}
+        onUpdatePreset={onUpdatePreset}
+        onDeletePreset={onDeletePreset}
+        onUpdateDefecation={onUpdateDefecation}
+        onDeleteDefecation={onDeleteDefecation}
+      />
 
       <Card title="프리셋 빠른 기록" icon="✓">
         <PresetGroup title="활동성" items={activityPresets} onPick={(label) => savePreset('activity', label)} />
@@ -122,8 +184,16 @@ export default function RecordPage({
         <div className="field">
           <span>섭취량</span>
           <div className="chip-wrap">
+            <button
+              type="button"
+              className={amount === null ? 'chip selected' : 'chip'}
+              onClick={() => setAmount(null)}
+            >
+              미기록
+            </button>
             {amountLabels.map((label, idx) => (
               <button
+                type="button"
                 key={label}
                 className={amount === idx ? 'chip selected' : 'chip'}
                 onClick={() => setAmount(idx as FeedingAmount)}
@@ -133,7 +203,7 @@ export default function RecordPage({
             ))}
           </div>
         </div>
-        <button className="secondary-action" onClick={saveFeeding}>급여 저장</button>
+        <button type="button" className="secondary-action" onClick={saveFeeding}>급여 저장</button>
       </Card>
 
       <Card title="체중" icon="⚖️">
@@ -142,7 +212,7 @@ export default function RecordPage({
             <span>체중 (g)</span>
             <input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="예: 4.8" />
           </label>
-          <button className="secondary-action align-end" onClick={saveWeight}>저장</button>
+          <button type="button" className="secondary-action align-end" onClick={saveWeight}>저장</button>
         </div>
       </Card>
 
@@ -150,7 +220,7 @@ export default function RecordPage({
       <Card title="배변" icon="●">
         <div className="chip-wrap">
           {(['정상', '묽음', '단단함', '형태 이상', '미분류'] as const).map((status) => (
-            <button className="chip" key={status} onClick={() => savePoop(status)}>{status}</button>
+            <button type="button" className="chip" key={status} onClick={() => savePoop(status)}>{status}</button>
           ))}
         </div>
       </Card>
@@ -165,7 +235,7 @@ export default function RecordPage({
             rows={4}
           />
         </label>
-        <button className="secondary-action" onClick={saveTmi}>TMI 저장</button>
+        <button type="button" className="secondary-action" onClick={saveTmi}>TMI 저장</button>
       </Card>
 
       {saved && <div className="toast" role="status">{saved}</div>}
@@ -179,7 +249,7 @@ function PresetGroup({ title, items, onPick }: { title: string; items: string[];
       <strong>{title}</strong>
       <div className="chip-wrap">
         {items.map((item) => (
-          <button className="chip" key={item} onClick={() => onPick(item)}>{item}</button>
+          <button type="button" className="chip" key={item} onClick={() => onPick(item)}>{item}</button>
         ))}
       </div>
     </div>

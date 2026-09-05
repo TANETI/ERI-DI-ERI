@@ -1372,3 +1372,123 @@ select:focus {
     flex-direction: column;
   }
 }
+
+
+/* Phase 2.3 — 기록 수정 / 삭제 */
+.record-manager-list {
+  display: grid;
+}
+
+.record-manager-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 12px 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.record-manager-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.record-manager-row:last-child {
+  padding-bottom: 0;
+}
+
+.record-manager-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #f6f3ed;
+  font-size: .9rem;
+}
+
+.record-manager-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.record-manager-copy strong {
+  font-size: .8rem;
+}
+
+.record-manager-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .74rem;
+  line-height: 1.5;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.record-manager-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.mini-action {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--sage-dark);
+  padding: 6px 8px;
+  font-size: .68rem;
+  font-weight: 900;
+}
+
+.mini-action:hover {
+  background: var(--sage-soft);
+}
+
+.mini-action.danger {
+  color: #875746;
+}
+
+.mini-action.danger:hover {
+  background: #f8ece6;
+  border-color: #e8cfc3;
+}
+
+.record-editor-card {
+  border-color: rgba(122, 137, 115, .62);
+  box-shadow:
+    0 10px 30px rgba(60, 52, 40, .07),
+    inset 0 0 0 1px rgba(122, 137, 115, .08);
+}
+
+.editor-memo {
+  margin-top: 14px;
+}
+
+.editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.editor-actions .secondary-action,
+.editor-actions .editor-save {
+  width: auto;
+  min-width: 92px;
+  margin: 0;
+  padding-inline: 16px;
+}
+
+@media (max-width: 620px) {
+  .record-manager-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .record-manager-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+}

@@ -396,7 +396,7 @@ function DailyView({
         <WeatherContextCard date={date} settings={settings} compact />
 
         <button className="primary-action" onClick={() => onAddRecord(date)}>
-          + 이 날짜에 기록 추가
+          ✎ 이 날짜 기록 관리
         </button>
 
         <p className="swipe-hint">← 좌우로 스와이프해서 날짜 이동 →</p>
