@@ -196,7 +196,7 @@ export default function RecordPage({
           <textarea
             value={tmi}
             onChange={(e) => setTmi(e.target.value)}
-            placeholder="예: 물그릇에 앞발 올리고 한참 앉아 있었음."
+            placeholder="예: 오늘은 에리가 물그릇 앞에 오래 앉아 있었다. 작은 욕조를 구경하는 것 같아서 참 귀여웠다."
             rows={4}
           />
         </label>

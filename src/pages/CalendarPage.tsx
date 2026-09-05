@@ -12,6 +12,7 @@ import {
   getMatchedFeedingLog,
   getScheduledDateForFeedingLog,
 } from '../lib/feeding'
+import { isWeightScheduledDay } from '../lib/weight'
 import type {
   AppSettings,
   DefecationLog,
@@ -246,6 +247,8 @@ function DailyView({
 
   const dayTogether = diffDays(settings.adoptionDate, date) + 1
   const isToday = date === todayIso
+  const weightScheduled = isWeightScheduledDay(date, settings)
+  const weightDone = weights.length > 0
 
   const tempValues = environments
     .map((x) => x.temperature)
@@ -352,8 +355,14 @@ function DailyView({
           <div className="daily-grid">
             <DailyStat
               icon="⚖"
-              title="체중"
-              value={weights.length ? `${weights[weights.length - 1].weight.toFixed(1)} g` : '기록 없음'}
+              title={weightScheduled ? '체중 · 측정일' : '체중'}
+              value={
+                weightDone
+                  ? `${weights[weights.length - 1].weight.toFixed(1)} g`
+                  : weightScheduled
+                    ? '측정 예정'
+                    : '기록 없음'
+              }
             />
             <DailyStat
               icon="💩"
@@ -488,6 +497,7 @@ function MonthlyView({
           const iso = toISODate(date)
           const scheduled = isScheduledDay(iso, settings.feedingStartDate, settings.feedingIntervalDays)
           const matchedFeed = scheduled ? getMatchedFeedingLog(iso, feedingLogs, settings) : undefined
+          const weightScheduled = isWeightScheduledDay(iso, settings)
           const hasWeight = weightLogs.some((x) => x.date === iso)
           const hasPoop = defecationLogs.some((x) => x.date === iso)
           const hasEnv = environmentLogs.some((x) => x.date === iso)
@@ -508,7 +518,11 @@ function MonthlyView({
 
               <span className="monthly-icons">
                 {scheduled && <span title={matchedFeed ? '급여 완료' : '급여 예정'}>{matchedFeed ? '☑🍚' : '☐🍚'}</span>}
-                {hasWeight && <span title="체중">⚖</span>}
+                {(weightScheduled || hasWeight) && (
+                  <span title={hasWeight ? '체중 측정 완료' : '체중 측정 예정'}>
+                    {hasWeight ? '☑⚖' : '☐⚖'}
+                  </span>
+                )}
                 {hasPoop && <span title="배변">💩</span>}
                 {hasEnv && <span title="환경">🌡</span>}
                 {hasTmi && <span title="TMI">💬</span>}
@@ -521,6 +535,8 @@ function MonthlyView({
       <div className="calendar-footnote">
         <span>☑🍚 급여 완료</span>
         <span>☐🍚 급여 예정</span>
+        <span>☑⚖ 체중 완료</span>
+        <span>☐⚖ 체중 예정</span>
         <span>날짜를 누르면 일간 보기로 이동</span>
       </div>
     </Card>

@@ -44,13 +44,22 @@ export default function App() {
         return next
       })
     },
+
     addWeight(log: WeightLog) {
       setWeightLogs((prev) => {
         const next = [log, ...prev]
         store.saveWeightLogs(next)
         return next
       })
+
+      setSettings((prev) => {
+        if (prev.weightStartDate) return prev
+        const next = { ...prev, weightStartDate: log.date }
+        store.saveSettings(next)
+        return next
+      })
     },
+
     addTmi(log: TmiLog) {
       setTmiLogs((prev) => {
         const next = [log, ...prev]
@@ -58,6 +67,7 @@ export default function App() {
         return next
       })
     },
+
     addPreset(log: PresetSelection) {
       setPresetSelections((prev) => {
         const next = [log, ...prev]
@@ -65,6 +75,7 @@ export default function App() {
         return next
       })
     },
+
     addEnvironment(log: EnvironmentLog) {
       setEnvironmentLogs((prev) => {
         const next = [log, ...prev]
@@ -72,6 +83,7 @@ export default function App() {
         return next
       })
     },
+
     addDefecation(log: DefecationLog) {
       setDefecationLogs((prev) => {
         const next = [log, ...prev]
@@ -129,7 +141,19 @@ export default function App() {
         )}
 
         {tab === 'album' && <AlbumPage />}
-        {tab === 'more' && <MorePage settings={settings} onSave={saveSettings} />}
+
+        {tab === 'more' && (
+          <MorePage
+            settings={settings}
+            feedingLogs={feedingLogs}
+            weightLogs={weightLogs}
+            tmiLogs={tmiLogs}
+            presetSelections={presetSelections}
+            environmentLogs={environmentLogs}
+            defecationLogs={defecationLogs}
+            onSave={saveSettings}
+          />
+        )}
       </div>
 
       <BottomNav

@@ -1,5 +1,19 @@
 import Card from '../components/Card'
-import { addDays, diffDays, formatKoreanDate, isScheduledDay, parseISODate, toISODate } from '../lib/date'
+import {
+  addDays,
+  diffDays,
+  formatKoreanDate,
+  isScheduledDay,
+  parseISODate,
+  toISODate,
+} from '../lib/date'
+import { getMatchedFeedingLog } from '../lib/feeding'
+import {
+  getNextWeightScheduledDate,
+  hasWeightLogOnDate,
+  isWeightScheduledDay,
+  latestWeightLog,
+} from '../lib/weight'
 import type { AppSettings, FeedingLog, WeightLog } from '../types'
 
 type Props = {
@@ -24,14 +38,35 @@ const amountLabel = (amount: FeedingLog['amount']) => {
   return `섭취 ${amount}/5`
 }
 
-export default function TodayPage({ settings, feedingLogs, weightLogs, onQuickRecord }: Props) {
+export default function TodayPage({
+  settings,
+  feedingLogs,
+  weightLogs,
+  onQuickRecord,
+}: Props) {
   const today = new Date()
   const todayIso = toISODate(today)
   const dayTogether = diffDays(settings.adoptionDate, todayIso) + 1
-  const feedingToday = isScheduledDay(todayIso, settings.feedingStartDate, settings.feedingIntervalDays)
-  const nextFeeding = nextScheduledDate(todayIso, settings.feedingStartDate, settings.feedingIntervalDays)
-  const todayFeeding = feedingLogs.find((log) => log.date === todayIso)
-  const latestWeight = [...weightLogs].sort((a, b) => b.date.localeCompare(a.date))[0]
+
+  const feedingToday = isScheduledDay(
+    todayIso,
+    settings.feedingStartDate,
+    settings.feedingIntervalDays,
+  )
+  const nextFeeding = nextScheduledDate(
+    todayIso,
+    settings.feedingStartDate,
+    settings.feedingIntervalDays,
+  )
+  const matchedTodayFeeding = feedingToday
+    ? getMatchedFeedingLog(todayIso, feedingLogs, settings)
+    : undefined
+
+  const latestWeight = latestWeightLog(weightLogs)
+  const weightScheduleStarted = Boolean(settings.weightStartDate)
+  const weightToday = isWeightScheduledDay(todayIso, settings)
+  const todayWeightLogged = hasWeightLogOnDate(todayIso, weightLogs)
+  const nextWeight = getNextWeightScheduledDate(todayIso, settings)
 
   return (
     <main className="page">
@@ -55,9 +90,19 @@ export default function TodayPage({ settings, feedingLogs, weightLogs, onQuickRe
         <Card title="급여" icon="🍚">
           {feedingToday ? (
             <>
-              <div className="status-badge due">오늘 급여일</div>
-              <p className="big-number">{settings.feedingTime}</p>
-              <p className="subtle">{todayFeeding ? '오늘 급여 기록 완료' : '아직 급여 기록이 없어요'}</p>
+              <div className={matchedTodayFeeding ? 'status-badge' : 'status-badge due'}>
+                {matchedTodayFeeding ? '오늘 회차 완료' : '오늘 급여일'}
+              </div>
+              <p className="big-number">
+                {matchedTodayFeeding
+                  ? `${matchedTodayFeeding.date} ${matchedTodayFeeding.time ?? ''}`.trim()
+                  : settings.feedingTime}
+              </p>
+              <p className="subtle">
+                {matchedTodayFeeding
+                  ? `${matchedTodayFeeding.food} · ${amountLabel(matchedTodayFeeding.amount)}`
+                  : `다음 날 ${String(settings.feedingGraceUntilHour).padStart(2, '0')}:00까지 같은 회차로 인정`}
+              </p>
             </>
           ) : (
             <>
@@ -69,9 +114,39 @@ export default function TodayPage({ settings, feedingLogs, weightLogs, onQuickRe
         </Card>
 
         <Card title="체중" icon="⚖️">
-          <div className="status-badge">최근 기록</div>
-          <p className="big-number">{latestWeight ? `${latestWeight.weight.toFixed(1)} g` : '—'}</p>
-          <p className="subtle">{latestWeight ? latestWeight.date : '아직 실제 체중 기록이 없어요'}</p>
+          {!weightScheduleStarted ? (
+            <>
+              <div className="status-badge">첫 측정 대기</div>
+              <p className="big-number">{latestWeight ? `${latestWeight.weight.toFixed(1)} g` : '—'}</p>
+              <p className="subtle">
+                첫 체중을 기록하면 그 날짜부터 {settings.weightIntervalDays}일 간격 측정 일정이 시작돼요.
+              </p>
+            </>
+          ) : weightToday ? (
+            <>
+              <div className={todayWeightLogged ? 'status-badge' : 'status-badge due'}>
+                {todayWeightLogged ? '오늘 측정 완료' : '오늘 측정일'}
+              </div>
+              <p className="big-number">
+                {todayWeightLogged
+                  ? `${weightLogs.find((log) => log.date === todayIso)?.weight.toFixed(1)} g`
+                  : latestWeight
+                    ? `${latestWeight.weight.toFixed(1)} g`
+                    : '—'}
+              </p>
+              <p className="subtle">
+                {todayWeightLogged ? '오늘 체중 기록 완료' : `최근 체중 ${latestWeight ? `${latestWeight.weight.toFixed(1)} g` : '없음'}`}
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="status-badge">다음 체중 측정</div>
+              <p className="big-number">{nextWeight ?? '—'}</p>
+              <p className="subtle">
+                최근 {latestWeight ? `${latestWeight.weight.toFixed(1)} g · ${latestWeight.date}` : '체중 기록 없음'}
+              </p>
+            </>
+          )}
         </Card>
       </div>
 
@@ -90,7 +165,7 @@ export default function TodayPage({ settings, feedingLogs, weightLogs, onQuickRe
               .map((log) => (
                 <div className="list-row" key={log.id}>
                   <div>
-                    <strong>{log.date}</strong>
+                    <strong>{log.date}{log.time ? ` · ${log.time}` : ''}</strong>
                     <span>{log.food}</span>
                   </div>
                   <span className="pill">{amountLabel(log.amount)}</span>

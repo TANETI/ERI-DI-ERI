@@ -963,3 +963,127 @@ select:focus {
     padding-top: 42px;
   }
 }
+
+
+/* Phase 2.0 — report center & weight schedule */
+.more-header {
+  align-items: flex-end;
+}
+
+.report-intro {
+  margin-top: 0;
+}
+
+.report-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 14px 0;
+}
+
+.report-presets button,
+.schedule-shortcuts button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  padding: 7px 11px;
+  font-size: .76rem;
+  font-weight: 900;
+}
+
+.schedule-shortcuts {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.schedule-shortcuts button.active {
+  border-color: var(--sage);
+  background: var(--sage-soft);
+  color: var(--sage-dark);
+}
+
+.report-range {
+  margin-bottom: 14px;
+}
+
+.report-actions {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.report-actions .secondary-action,
+.report-actions .report-primary {
+  margin: 0;
+  min-height: 46px;
+}
+
+.report-primary {
+  width: 100%;
+}
+
+.report-preview {
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  overflow: hidden;
+  background: #fbf9f5;
+}
+
+.report-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--line-soft);
+  background: #f5f1e9;
+}
+
+.report-preview-head strong {
+  font-size: .82rem;
+}
+
+.report-preview-head span {
+  color: var(--muted);
+  font-size: .72rem;
+}
+
+.report-preview pre {
+  margin: 0;
+  padding: 14px;
+  max-height: 420px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  color: #4c514b;
+  font-family: var(--font-system);
+  font-size: .74rem;
+  line-height: 1.65;
+}
+
+.report-error {
+  border-radius: 12px;
+  background: var(--warning-soft);
+  color: #76543c;
+  padding: 12px;
+  font-size: .82rem;
+  font-weight: 800;
+}
+
+@media (max-width: 620px) {
+  .more-header {
+    align-items: flex-start;
+  }
+
+  .report-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .report-preview pre {
+    max-height: 330px;
+  }
+}
