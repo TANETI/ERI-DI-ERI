@@ -1459,10 +1459,6 @@ select:focus {
   margin-top: 12px;
 }
 
-.more-mode-toggle {
-  grid-template-columns: repeat(3, 1fr);
-}
-
 .more-mode-toggle button {
   min-width: 58px;
 }
@@ -1588,4 +1584,1412 @@ select:focus {
   .stats-range-toggle {
     width: 100%;
   }
+}
+
+
+/* Phase 3.2.1 — 구래동 고정 위치 날씨 */
+.weather-source-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: -2px 0 11px;
+  color: var(--muted);
+  font-size: .68rem;
+}
+
+.weather-source-badge,
+.home-weather-location-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  border-radius: 999px;
+  background: var(--sage-soft);
+  color: var(--sage-dark);
+  padding: 5px 8px;
+  font-size: .64rem;
+  font-weight: 900;
+}
+
+.home-weather-location-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: #f8f5ef;
+}
+
+.home-weather-location-card > div {
+  display: grid;
+  gap: 3px;
+}
+
+.home-weather-location-card span {
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 800;
+}
+
+.home-weather-location-card strong {
+  font-size: .9rem;
+}
+
+.home-weather-location-card small {
+  color: var(--muted);
+  font-size: .66rem;
+}
+
+.home-weather-location-badge {
+  min-width: 52px;
+  height: 32px;
+  padding-inline: 10px;
+  font-size: .68rem;
+}
+
+@media (max-width: 520px) {
+  .home-weather-location-card {
+    align-items: flex-start;
+  }
+}
+
+
+/* Phase 3.3 — 통계 화면 정돈 */
+.stats-page {
+  display: grid;
+  gap: 14px;
+}
+
+.stats-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 2px 2px 0;
+}
+
+.stats-page-head > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.stats-page-head > div:first-child > span {
+  color: var(--muted);
+  font-size: .66rem;
+  font-weight: 800;
+}
+
+.stats-page-head > div:first-child > strong {
+  font-size: .92rem;
+}
+
+.stats-card-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.feeding-metric-toggle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.feeding-metric-toggle button small {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(118, 121, 112, .10);
+  color: inherit;
+  padding: 0 5px;
+  font-size: .58rem;
+  font-weight: 900;
+}
+
+.feeding-metric-toggle button.active small {
+  background: rgba(86, 101, 80, .12);
+}
+
+.stats-context {
+  color: var(--muted);
+  font-size: .66rem;
+  font-weight: 800;
+}
+
+.stats-feature {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 13px;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: #f8f5ef;
+}
+
+.stats-feature > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.stats-feature > div:first-child > span {
+  color: var(--muted);
+  font-size: .66rem;
+  font-weight: 800;
+}
+
+.stats-feature > div:first-child > strong {
+  color: var(--text);
+  font-size: 1.5rem;
+  line-height: 1.1;
+}
+
+.stats-feature-meta {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: .68rem;
+  text-align: right;
+}
+
+.stats-feature-meta strong {
+  color: var(--sage-dark);
+}
+
+.stats-summary-grid-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.stats-box {
+  min-height: 58px;
+  align-content: center;
+}
+
+.stats-box strong {
+  line-height: 1.3;
+}
+
+.trend-chart-wrap {
+  margin-top: 10px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55);
+}
+
+.trend-reference-line {
+  stroke: rgba(86, 101, 80, .36);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 5;
+}
+
+.trend-reference-label {
+  fill: var(--sage-dark);
+  font-size: 10px;
+  font-family: var(--app-font);
+  font-weight: 800;
+}
+
+.stats-empty {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  min-height: 118px;
+  align-content: center;
+}
+
+.stats-empty > span {
+  font-size: 1.35rem;
+}
+
+.stats-empty > strong {
+  color: var(--text);
+  font-size: .82rem;
+}
+
+.stats-empty > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .72rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 620px) {
+  .stats-page-head {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .stats-page-head .stats-range-toggle {
+    width: 100%;
+  }
+
+  .stats-card-topline {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .stats-context {
+    display: none;
+  }
+
+  .stats-feature {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .stats-feature-meta {
+    text-align: left;
+  }
+
+  .stats-summary-grid-three {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Phase 3.4 — 4시간 단위 가로 날씨 */
+.weather-day-overview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: #f8f5ef;
+  color: var(--muted);
+  font-size: .62rem;
+  line-height: 1.35;
+}
+
+.weather-day-overview > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.weather-day-overview strong {
+  color: var(--text);
+  font-size: .66rem;
+}
+
+.weather-day-source {
+  margin-left: auto;
+  opacity: .78;
+}
+
+
+
+/* Phase 3.5 — 2시간 단위 스크롤 날씨 다이얼 */
+.weather-dial-wrap {
+  position: relative;
+  margin-top: 3px;
+}
+
+.weather-period-dial {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: inline mandatory;
+  scroll-padding-inline: calc(50% - 66px);
+  padding: 11px calc(50% - 58px) 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(118, 121, 112, .24) transparent;
+}
+
+.weather-period-dial::-webkit-scrollbar {
+  height: 5px;
+}
+
+.weather-period-dial::-webkit-scrollbar-thumb {
+  background: rgba(118, 121, 112, .24);
+  border-radius: 999px;
+}
+
+.weather-dial-card {
+  flex: 0 0 106px;
+  min-height: 105px;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  padding: 10px 9px;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: #fbf9f5;
+  scroll-snap-align: center;
+  transform: scale(.94);
+  opacity: .78;
+  transition:
+    flex-basis 180ms ease,
+    transform 180ms ease,
+    opacity 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.weather-dial-card.current {
+  flex-basis: 132px;
+  min-height: 120px;
+  transform: scale(1);
+  opacity: 1;
+  border-color: rgba(86, 101, 80, .42);
+  background: var(--sage-soft);
+  box-shadow:
+    0 6px 18px rgba(71, 79, 67, .09),
+    inset 0 0 0 1px rgba(86, 101, 80, .05);
+}
+
+.weather-dial-time {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 1px;
+  white-space: nowrap;
+}
+
+.weather-dial-time strong {
+  color: var(--text);
+  font-size: .82rem;
+  letter-spacing: -.02em;
+}
+
+.weather-dial-time span {
+  color: var(--muted);
+  font-size: .66rem;
+  font-weight: 800;
+}
+
+.weather-dial-card.current .weather-dial-time strong {
+  font-size: 1rem;
+}
+
+.weather-dial-label {
+  color: var(--muted);
+  font-size: .58rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.weather-dial-card.current .weather-dial-label {
+  color: var(--sage-dark);
+  font-size: .64rem;
+}
+
+.weather-dial-temp {
+  color: var(--text);
+  font-size: .78rem;
+  font-weight: 900;
+  letter-spacing: -.02em;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.weather-dial-card.current .weather-dial-temp {
+  font-size: .94rem;
+}
+
+.weather-dial-meta {
+  display: grid;
+  gap: 2px;
+  color: var(--muted);
+  font-size: .57rem;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.weather-dial-meta span {
+  white-space: nowrap;
+}
+
+.weather-dial-center-mark {
+  position: absolute;
+  z-index: 3;
+  top: 4px;
+  left: 50%;
+  width: 2px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--sage-dark);
+  transform: translateX(-50%);
+  opacity: .42;
+  pointer-events: none;
+}
+
+.weather-dial-wrap::before,
+.weather-dial-wrap::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  bottom: 12px;
+  width: 22px;
+  pointer-events: none;
+}
+
+.weather-dial-wrap::before {
+  left: 0;
+  background: linear-gradient(90deg, var(--card), rgba(255,255,255,0));
+}
+
+.weather-dial-wrap::after {
+  right: 0;
+  background: linear-gradient(270deg, var(--card), rgba(255,255,255,0));
+}
+
+@media (max-width: 520px) {
+  .weather-period-dial {
+    gap: 6px;
+    padding-inline: calc(50% - 56px);
+  }
+
+  .weather-dial-card {
+    flex-basis: 98px;
+  }
+
+  .weather-dial-card.current {
+    flex-basis: 124px;
+  }
+}
+
+
+/* Phase 4.0 — 로컬 사진 앨범 */
+.photo-card {
+  overflow: hidden;
+}
+
+.today-photo-button {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 210px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 14px;
+  background: #f5f1e8;
+  padding: 0;
+  text-align: left;
+}
+
+.today-photo-image,
+.photo-image-loading.today-photo-image {
+  display: block;
+  width: 100%;
+  height: 260px;
+  object-fit: cover;
+}
+
+.photo-image-loading {
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(135deg, #f8f5ef, #efeadf);
+  color: var(--muted);
+}
+
+.photo-image-loading span {
+  font-size: 1.5rem;
+}
+
+.today-photo-overlay {
+  position: absolute;
+  inset: auto 0 0;
+  display: grid;
+  gap: 2px;
+  padding: 28px 15px 13px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(30, 32, 29, 0),
+      rgba(30, 32, 29, .58)
+    );
+  color: white;
+}
+
+.today-photo-overlay strong {
+  font-size: .92rem;
+}
+
+.today-photo-overlay small {
+  opacity: .9;
+  font-size: .68rem;
+}
+
+.photo-placeholder-button {
+  width: 100%;
+  border: 0;
+  cursor: pointer;
+}
+
+.album-page {
+  padding-bottom: 112px;
+}
+
+.album-filter {
+  display: inline-grid;
+  grid-auto-flow: column;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #f8f5ef;
+}
+
+.album-filter button {
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  padding: 7px 10px;
+  font-size: .7rem;
+  font-weight: 900;
+}
+
+.album-filter button.active {
+  background: var(--sage-soft);
+  color: var(--sage-dark);
+}
+
+.album-upload-card {
+  display: grid;
+  gap: 10px;
+}
+
+.album-upload-row {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.compact-field {
+  min-width: 170px;
+  flex: 1 1 170px;
+}
+
+.album-upload-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 44px;
+  border-radius: 12px;
+  background: var(--sage-dark);
+  color: white;
+  padding: 0 14px;
+  font-size: .75rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.album-upload-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.album-upload-button.disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
+.album-upload-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: .68rem;
+  line-height: 1.55;
+}
+
+.inline-message {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--sage-soft);
+  color: var(--sage-dark);
+  font-size: .68rem;
+  font-weight: 800;
+}
+
+.album-groups {
+  display: grid;
+  gap: 18px;
+}
+
+.album-date-group {
+  display: grid;
+  gap: 9px;
+}
+
+.album-date-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-inline: 2px;
+}
+
+.album-date-head > div {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.album-date-head strong {
+  font-size: .82rem;
+}
+
+.album-date-head span {
+  color: var(--muted);
+  font-size: .64rem;
+}
+
+.album-cover-label {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: var(--sage-soft);
+  color: var(--sage-dark) !important;
+  font-weight: 900;
+}
+
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.album-photo {
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.album-photo.cover {
+  border-color: rgba(86, 101, 80, .42);
+}
+
+.album-photo-image-wrap {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #f5f1e8;
+}
+
+.album-photo-image,
+.photo-image-loading.album-photo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.album-photo-cover-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(52, 65, 48, .9);
+  color: white;
+  font-size: .58rem;
+  font-weight: 900;
+}
+
+.album-photo-body {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+}
+
+.album-caption {
+  width: 100%;
+  min-height: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+  font-size: .7rem;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.album-caption:empty {
+  color: var(--muted);
+}
+
+.album-caption-editor {
+  display: grid;
+  gap: 6px;
+}
+
+.album-caption-editor input {
+  min-width: 0;
+  width: 100%;
+}
+
+.album-caption-editor > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.album-caption-editor button,
+.album-photo-actions button {
+  border: 0;
+  border-radius: 8px;
+  background: #f4f0e8;
+  color: var(--muted);
+  padding: 5px 7px;
+  font-size: .62rem;
+  font-weight: 900;
+}
+
+.album-caption-editor button.save,
+.album-photo-actions button.active {
+  background: var(--sage-soft);
+  color: var(--sage-dark);
+}
+
+.album-photo-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.danger-text {
+  color: #8a5555 !important;
+}
+
+.album-empty {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 22px 10px;
+  text-align: center;
+}
+
+.album-empty > span {
+  font-size: 1.7rem;
+}
+
+.album-empty strong {
+  font-size: .82rem;
+}
+
+.album-empty p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .7rem;
+}
+
+.daily-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: .72rem;
+}
+
+.daily-photo-row small {
+  color: var(--muted);
+  margin-left: auto;
+}
+
+@media (max-width: 760px) {
+  .album-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .album-filter {
+    width: 100%;
+    grid-auto-columns: 1fr;
+  }
+
+  .album-upload-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .album-upload-button {
+    width: 100%;
+  }
+
+  .album-grid {
+    gap: 8px;
+  }
+
+  .today-photo-image,
+  .photo-image-loading.today-photo-image {
+    height: 230px;
+  }
+}
+
+
+/* Phase 4.1 — 평가 / 관리 결정 이력 */
+.more-mode-toggle {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.evaluation-history-page {
+  display: grid;
+  gap: 14px;
+}
+
+.evaluation-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.evaluation-summary-box {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 13px;
+  background: #f8f5ef;
+}
+
+.evaluation-summary-box > span {
+  font-size: 1.1rem;
+}
+
+.evaluation-summary-box > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.evaluation-summary-box small {
+  color: var(--muted);
+  font-size: .61rem;
+  font-weight: 800;
+}
+
+.evaluation-summary-box strong {
+  font-size: .84rem;
+}
+
+.evaluation-range {
+  margin-top: 12px;
+}
+
+.evaluation-textarea-field {
+  margin-top: 12px;
+}
+
+.evaluation-textarea-field textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 110px;
+  line-height: 1.58;
+}
+
+.history-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 11px;
+}
+
+.history-save-button {
+  width: auto;
+  min-width: 132px;
+}
+
+.management-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+  margin-bottom: 10px;
+}
+
+.evaluation-list,
+.decision-list {
+  display: grid;
+  gap: 9px;
+}
+
+.evaluation-history-item,
+.decision-history-item {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 13px;
+  background: #fbf9f5;
+}
+
+.evaluation-history-head,
+.decision-history-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.evaluation-history-head > div {
+  display: grid;
+  gap: 2px;
+}
+
+.evaluation-history-head span {
+  color: var(--muted);
+  font-size: .6rem;
+  font-weight: 800;
+}
+
+.evaluation-history-head strong {
+  font-size: .78rem;
+}
+
+.evaluation-history-head small,
+.decision-history-top time {
+  color: var(--muted);
+  font-size: .61rem;
+}
+
+.evaluation-history-details {
+  overflow: hidden;
+  border-radius: 10px;
+  background: white;
+}
+
+.evaluation-history-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  padding: 9px 10px;
+  color: var(--sage-dark);
+  font-size: .7rem;
+  font-weight: 900;
+}
+
+.evaluation-history-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.evaluation-history-details summary span {
+  color: var(--muted);
+  font-size: .6rem;
+  font-weight: 700;
+}
+
+.evaluation-history-details pre {
+  max-height: 360px;
+  overflow: auto;
+  margin: 0;
+  padding: 11px;
+  border-top: 1px solid var(--line-soft);
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+  font: inherit;
+  font-size: .68rem;
+  line-height: 1.58;
+}
+
+.history-item-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.history-item-actions button {
+  border: 0;
+  border-radius: 8px;
+  background: #f1ece3;
+  color: var(--muted);
+  padding: 5px 8px;
+  font-size: .61rem;
+  font-weight: 900;
+}
+
+.decision-badges {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.decision-category-badge,
+.decision-status-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 7px;
+  font-size: .58rem;
+  font-weight: 900;
+}
+
+.decision-category-badge {
+  background: #eee9df;
+  color: var(--text);
+}
+
+.decision-status-badge.planned {
+  background: #f3eee1;
+  color: #806d3f;
+}
+
+.decision-status-badge.applied {
+  background: var(--sage-soft);
+  color: var(--sage-dark);
+}
+
+.decision-status-badge.ended {
+  background: #eee;
+  color: #666;
+}
+
+.decision-title {
+  font-size: .82rem;
+  line-height: 1.4;
+}
+
+.decision-detail {
+  margin: 0;
+  color: var(--muted);
+  font-size: .69rem;
+  line-height: 1.55;
+}
+
+.linked-evaluation {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 6px 8px;
+  border-radius: 9px;
+  background: white;
+  color: var(--muted);
+  font-size: .61rem;
+}
+
+.linked-evaluation strong {
+  color: var(--sage-dark);
+  font-size: .62rem;
+}
+
+.history-empty {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 18px 8px;
+  text-align: center;
+}
+
+.history-empty > span {
+  font-size: 1.35rem;
+}
+
+.history-empty strong {
+  font-size: .78rem;
+}
+
+.history-empty p {
+  max-width: 440px;
+  margin: 0;
+  color: var(--muted);
+  font-size: .68rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 760px) {
+  .management-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .more-mode-toggle button {
+    min-width: 0;
+    padding-inline: 5px;
+  }
+
+  .evaluation-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .management-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .history-form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .history-form-actions button {
+    width: 100%;
+  }
+
+  .evaluation-history-head {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+
+/* Phase 4.2 — 백업 / 복원 */
+.backup-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: #f8f5ef;
+}
+
+.backup-hero > div {
+  display: grid;
+  gap: 3px;
+}
+
+.backup-hero span {
+  color: var(--muted);
+  font-size: .66rem;
+  font-weight: 800;
+}
+
+.backup-hero strong {
+  font-size: .88rem;
+}
+
+.backup-hero small {
+  color: var(--muted);
+  font-size: .65rem;
+  line-height: 1.45;
+}
+
+.backup-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--sage-soft);
+  color: var(--sage-dark) !important;
+  padding-inline: 9px;
+  font-size: .62rem !important;
+  font-weight: 900 !important;
+}
+
+.backup-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.backup-action-card {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  min-height: 72px;
+  border: 1px solid var(--line-soft);
+  border-radius: 13px;
+  background: #fbf9f5;
+  color: var(--text);
+  padding: 11px;
+  text-align: left;
+}
+
+.backup-action-card.primary {
+  border-color: rgba(86, 101, 80, .32);
+  background: var(--sage-soft);
+}
+
+.backup-action-card > span {
+  flex: 0 0 auto;
+  font-size: 1.2rem;
+}
+
+.backup-action-card > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.backup-action-card strong {
+  font-size: .72rem;
+}
+
+.backup-action-card small {
+  color: var(--muted);
+  font-size: .6rem;
+  line-height: 1.4;
+}
+
+.backup-action-card:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+
+.backup-restore-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px 13px;
+  border: 1px solid var(--line-soft);
+  border-radius: 13px;
+  background: white;
+}
+
+.backup-restore-box > div {
+  display: grid;
+  gap: 3px;
+}
+
+.backup-restore-box strong {
+  font-size: .74rem;
+}
+
+.backup-restore-box p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .64rem;
+  line-height: 1.5;
+}
+
+.backup-restore-button {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border-radius: 10px;
+  background: #eee9df;
+  color: var(--text);
+  padding: 0 11px;
+  font-size: .66rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.backup-restore-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.backup-restore-button.disabled {
+  opacity: .5;
+  cursor: wait;
+}
+
+.backup-warning {
+  margin-top: 10px;
+  padding: 10px 11px;
+  border-radius: 11px;
+  background: #faf3e6;
+}
+
+.backup-warning strong {
+  color: #725f39;
+  font-size: .68rem;
+}
+
+.backup-warning p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: .63rem;
+  line-height: 1.52;
+}
+
+.backup-warning p strong {
+  font-size: inherit;
+}
+
+@media (max-width: 700px) {
+  .backup-action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .backup-action-card {
+    min-height: 62px;
+  }
+
+  .backup-restore-box {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .backup-restore-button {
+    width: 100%;
+  }
+}
+
+
+/* Phase 5.0 — Repository bootstrap / persistence state */
+.app-bootstrap {
+  min-height: 100dvh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 7px;
+  background: var(--bg);
+  color: var(--text);
+  text-align: center;
+}
+
+.app-bootstrap > span {
+  font-size: 2rem;
+}
+
+.app-bootstrap strong {
+  font-size: .88rem;
+}
+
+.app-bootstrap small {
+  color: var(--muted);
+  font-size: .65rem;
+  letter-spacing: .04em;
+}
+
+.repository-error-banner {
+  position: fixed;
+  z-index: 80;
+  top: 10px;
+  left: 50%;
+  width: min(calc(100% - 24px), 560px);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(132, 88, 72, .2);
+  border-radius: 12px;
+  background: rgba(255, 248, 242, .96);
+  box-shadow: 0 7px 24px rgba(55, 45, 37, .1);
+  color: #76584d;
+  padding: 9px 11px;
+  font-size: .67rem;
+  line-height: 1.45;
+  text-align: left;
+  backdrop-filter: blur(8px);
 }

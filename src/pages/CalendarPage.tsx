@@ -6,6 +6,7 @@ import {
   diffDays,
   monthGrid,
   parseISODate,
+  todayISO,
   toISODate,
 } from '../lib/date'
 import {
@@ -25,6 +26,7 @@ import type {
   AppSettings,
   DefecationLog,
   FeedingLog,
+  PhotoMeta,
   PresetSelection,
   TmiLog,
   WeightLog,
@@ -39,6 +41,7 @@ type Props = {
   tmiLogs: TmiLog[]
   presetSelections: PresetSelection[]
   defecationLogs: DefecationLog[]
+  photos: PhotoMeta[]
   onAddRecord: (date: string) => void
 }
 
@@ -83,9 +86,10 @@ export default function CalendarPage({
   tmiLogs,
   presetSelections,
   defecationLogs,
+  photos,
   onAddRecord,
 }: Props) {
-  const todayIso = toISODate(new Date())
+  const todayIso = todayISO()
   const [viewMode, setViewMode] = useState<ViewMode>('daily')
   const [selectedDate, setSelectedDate] = useState(todayIso)
   const [monthDate, setMonthDate] = useState(() => {
@@ -170,6 +174,7 @@ export default function CalendarPage({
           tmiLogs={tmiLogs}
           presetSelections={presetSelections}
           defecationLogs={defecationLogs}
+          photos={photos}
           weekStrip={weekStrip}
           onSelectDate={selectDate}
           onMoveDay={moveDay}
@@ -186,6 +191,7 @@ export default function CalendarPage({
           weightLogs={weightLogs}
           tmiLogs={tmiLogs}
           defecationLogs={defecationLogs}
+          photos={photos}
           cells={monthCells}
           onMoveMonth={(delta) => {
             setMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1))
@@ -209,6 +215,7 @@ function DailyView({
   tmiLogs,
   presetSelections,
   defecationLogs,
+  photos,
   weekStrip,
   onSelectDate,
   onMoveDay,
@@ -224,6 +231,7 @@ function DailyView({
   tmiLogs: TmiLog[]
   presetSelections: PresetSelection[]
   defecationLogs: DefecationLog[]
+  photos: PhotoMeta[]
   weekStrip: string[]
   onSelectDate: (iso: string) => void
   onMoveDay: (delta: number) => void
@@ -236,6 +244,7 @@ function DailyView({
   const tmis = tmiLogs.filter((x) => x.date === date)
   const presets = presetSelections.filter((x) => x.date === date)
   const poops = defecationLogs.filter((x) => x.date === date)
+  const photosOnDate = photos.filter((x) => x.date === date)
 
   const scheduled = isFeedingScheduledDay(date, settings)
   const feedingSchedule = getFeedingScheduleForDate(date, settings)
@@ -374,6 +383,19 @@ function DailyView({
             />
           </div>
 
+          {photosOnDate.length > 0 && (
+            <>
+              <div className="daily-divider" />
+              <div className="daily-photo-row">
+                <span aria-hidden="true">📷</span>
+                <strong>사진 {photosOnDate.length}장</strong>
+                {photosOnDate.some((photo) => photo.isCover) && (
+                  <small>대표 사진 지정됨</small>
+                )}
+              </div>
+            </>
+          )}
+
           {presets.length > 0 && (
             <>
               <div className="daily-divider" />
@@ -456,6 +478,7 @@ function MonthlyView({
   weightLogs,
   tmiLogs,
   defecationLogs,
+  photos,
   cells,
   onMoveMonth,
   onSelectDate,
@@ -467,6 +490,7 @@ function MonthlyView({
   weightLogs: WeightLog[]
   tmiLogs: TmiLog[]
   defecationLogs: DefecationLog[]
+  photos: PhotoMeta[]
   cells: Array<Date | null>
   onMoveMonth: (delta: number) => void
   onSelectDate: (iso: string) => void
@@ -497,6 +521,7 @@ function MonthlyView({
           const hasWeight = weightLogs.some((x) => x.date === iso)
           const hasPoop = defecationLogs.some((x) => x.date === iso)
           const hasTmi = tmiLogs.some((x) => x.date === iso)
+          const photoCount = photos.filter((x) => x.date === iso).length
           const isToday = iso === todayIso
 
           return (
@@ -528,6 +553,11 @@ function MonthlyView({
                 )}
                 {hasPoop && <span title="배변">💩</span>}
                 {hasTmi && <span title="TMI">💬</span>}
+                {photoCount > 0 && (
+                  <span title={`사진 ${photoCount}장`}>
+                    📷{photoCount > 1 ? photoCount : ''}
+                  </span>
+                )}
               </span>
             </button>
           )

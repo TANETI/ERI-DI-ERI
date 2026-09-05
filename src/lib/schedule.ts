@@ -1,4 +1,4 @@
-import { addDays, diffDays, parseISODate, toISODate } from './date'
+import { addDays, diffDays, parseISODate, todayISO, toISODate } from './date'
 import type {
   AppSettings,
   FeedingSchedulePeriod,
@@ -218,7 +218,7 @@ export function commitScheduleChanges(
 
       const effectiveFrom = anchorChanged
         ? draft.weightStartDate
-        : toISODate(new Date())
+        : todayISO()
 
       weightScheduleHistory = upsertWeightPeriod(previousWeight, {
         effectiveFrom,

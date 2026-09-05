@@ -1,21 +1,33 @@
 import { useMemo, useState } from 'react'
 import Card from '../components/Card'
 import StatsPage from './StatsPage'
+import EvaluationHistoryPage from './EvaluationHistoryPage'
 import { buildReport } from '../lib/report'
-import { searchWeatherLocations } from '../lib/weather'
-import { toISODate } from '../lib/date'
+import {
+  addDays,
+  parseISODate,
+  todayISO,
+  toISODate,
+} from '../lib/date'
+import {
+  downloadCsvBundle,
+  downloadFullBackup,
+  downloadStructuredJson,
+  restoreBackupFile,
+} from '../lib/backup'
 import type {
   AppSettings,
   DefecationLog,
+  EvaluationLog,
   FeedingLog,
   FontPreset,
+  ManagementDecision,
   PresetSelection,
   TmiLog,
   WeightLog,
-  WeatherLocation,
 } from '../types'
 
-type Mode = 'stats' | 'report' | 'settings'
+type Mode = 'stats' | 'review' | 'report' | 'settings'
 
 type Props = {
   settings: AppSettings
@@ -24,6 +36,14 @@ type Props = {
   tmiLogs: TmiLog[]
   presetSelections: PresetSelection[]
   defecationLogs: DefecationLog[]
+  evaluationLogs: EvaluationLog[]
+  managementDecisions: ManagementDecision[]
+  onAddEvaluation: (log: EvaluationLog) => void
+  onUpdateEvaluation: (log: EvaluationLog) => void
+  onDeleteEvaluation: (id: string) => void
+  onAddManagementDecision: (log: ManagementDecision) => void
+  onUpdateManagementDecision: (log: ManagementDecision) => void
+  onDeleteManagementDecision: (id: string) => void
   onSave: (settings: AppSettings) => void
 }
 
@@ -42,18 +62,24 @@ export default function MorePage({
   tmiLogs,
   presetSelections,
   defecationLogs,
+  evaluationLogs,
+  managementDecisions,
+  onAddEvaluation,
+  onUpdateEvaluation,
+  onDeleteEvaluation,
+  onAddManagementDecision,
+  onUpdateManagementDecision,
+  onDeleteManagementDecision,
   onSave,
 }: Props) {
-  const today = toISODate(new Date())
+  const today = todayISO()
   const [mode, setMode] = useState<Mode>('stats')
   const [draft, setDraft] = useState(settings)
   const [saved, setSaved] = useState(false)
   const [reportStart, setReportStart] = useState(settings.adoptionDate)
   const [reportEnd, setReportEnd] = useState(today)
   const [message, setMessage] = useState('')
-  const [locationQuery, setLocationQuery] = useState(settings.weatherLocationLabel ?? '')
-  const [locationResults, setLocationResults] = useState<WeatherLocation[]>([])
-  const [locationSearching, setLocationSearching] = useState(false)
+  const [backupBusy, setBackupBusy] = useState(false)
 
   const report = useMemo(() => {
     try {
@@ -114,21 +140,99 @@ export default function MorePage({
     flash('JSON 보고서를 저장했어요.')
   }
 
-  const searchLocation = async () => {
-    if (!locationQuery.trim()) {
-      flash('지역 이름을 입력해 주세요.')
-      return
-    }
+  const exportFullBackup = async () => {
+    setBackupBusy(true)
 
-    setLocationSearching(true)
     try {
-      const results = await searchWeatherLocations(locationQuery)
-      setLocationResults(results)
-      if (!results.length) flash('검색 결과가 없어요.')
-    } catch {
-      flash('지역 검색에 실패했어요.')
+      const result =
+        await downloadFullBackup()
+
+      flash(
+        result.photoCount
+          ? `전체 백업을 만들었어요. 사진 ${result.photoCount}장 포함!`
+          : '전체 백업을 만들었어요.',
+      )
+    } catch (error) {
+      flash(
+        error instanceof Error
+          ? error.message
+          : '전체 백업을 만들지 못했어요.',
+      )
     } finally {
-      setLocationSearching(false)
+      setBackupBusy(false)
+    }
+  }
+
+  const exportStructuredBackup = async () => {
+    setBackupBusy(true)
+
+    try {
+      await downloadStructuredJson()
+      flash('기록 JSON을 저장했어요.')
+    } catch (error) {
+      flash(
+        error instanceof Error
+          ? error.message
+          : '기록 JSON을 만들지 못했어요.',
+      )
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  const exportCsvBackup = async () => {
+    setBackupBusy(true)
+
+    try {
+      await downloadCsvBundle()
+      flash('CSV 묶음을 저장했어요.')
+    } catch (error) {
+      flash(
+        error instanceof Error
+          ? error.message
+          : 'CSV 묶음을 만들지 못했어요.',
+      )
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  const restoreBackup = async (
+    file: File | undefined,
+  ) => {
+    if (!file) return
+
+    const confirmed =
+      window.confirm(
+        '백업을 복원하면 현재 구조화 기록이 백업 내용으로 교체됩니다.\\n\\n전체 TAR 백업은 현재 로컬 사진도 백업 속 사진으로 교체합니다. 계속할까요?',
+      )
+
+    if (!confirmed) return
+
+    setBackupBusy(true)
+
+    try {
+      const result =
+        await restoreBackupFile(file)
+
+      if (result.kind === 'full') {
+        window.alert(
+          `전체 백업 복원이 끝났어요. 사진 ${result.photoCount}장도 복원했습니다. 앱을 다시 불러올게요.`,
+        )
+      } else {
+        window.alert(
+          '기록 JSON 복원이 끝났어요. 사진은 현재 로컬 상태 그대로 유지합니다. 앱을 다시 불러올게요.',
+        )
+      }
+
+      window.location.reload()
+    } catch (error) {
+      flash(
+        error instanceof Error
+          ? error.message
+          : '백업 복원에 실패했어요.',
+      )
+      setBackupBusy(false)
     }
   }
 
@@ -144,12 +248,20 @@ export default function MorePage({
   }
 
   const setRecentDays = (days: number) => {
-    const end = new Date()
-    const start = new Date()
-    start.setDate(end.getDate() - (days - 1))
-    const startIso = toISODate(start)
-    setReportStart(startIso < settings.adoptionDate ? settings.adoptionDate : startIso)
-    setReportEnd(toISODate(end))
+    const endIso = todayISO()
+    const startIso = toISODate(
+      addDays(
+        parseISODate(endIso),
+        -(days - 1),
+      ),
+    )
+
+    setReportStart(
+      startIso < settings.adoptionDate
+        ? settings.adoptionDate
+        : startIso,
+    )
+    setReportEnd(endIso)
   }
 
   return (
@@ -167,6 +279,13 @@ export default function MorePage({
             onClick={() => setMode('stats')}
           >
             통계
+          </button>
+          <button
+            type="button"
+            className={mode === 'review' ? 'active' : ''}
+            onClick={() => setMode('review')}
+          >
+            평가
           </button>
           <button
             type="button"
@@ -189,6 +308,18 @@ export default function MorePage({
         <StatsPage
           feedingLogs={feedingLogs}
           weightLogs={weightLogs}
+        />
+      ) : mode === 'review' ? (
+        <EvaluationHistoryPage
+          adoptionDate={settings.adoptionDate}
+          evaluations={evaluationLogs}
+          decisions={managementDecisions}
+          onAddEvaluation={onAddEvaluation}
+          onUpdateEvaluation={onUpdateEvaluation}
+          onDeleteEvaluation={onDeleteEvaluation}
+          onAddDecision={onAddManagementDecision}
+          onUpdateDecision={onUpdateManagementDecision}
+          onDeleteDecision={onDeleteManagementDecision}
         />
       ) : mode === 'report' ? (
         <>
@@ -268,7 +399,8 @@ export default function MorePage({
           <Card title="현재 구현 상태">
             <p className="setting-help">
               급여·체중 일정은 적용 시작일별로 이력을 보존합니다.
-              보고서와 과거 달력도 해당 날짜에 실제로 적용되던 스케줄로 계산합니다.
+              ChatGPT 평가와 실제 관리 결정은 ‘평가’ 탭에 별도로 저장하며,
+              새로운 보고서에는 과거 평가를 자동으로 섞지 않습니다.
             </p>
           </Card>
         </>
@@ -373,72 +505,26 @@ export default function MorePage({
 
 
           <Card title="지역 날씨" icon="☁️">
-            <p className="setting-help weather-setting-intro">
-              직접 온습도를 매번 입력하는 대신, 우리 집 지역의 기온·습도·비 예보를 가져와 관리 체크 알림에 사용합니다.
-            </p>
-
-            <div className="weather-location-search">
-              <label className="field">
-                <span>우리 집 지역</span>
-                <input
-                  value={locationQuery}
-                  onChange={(e) => setLocationQuery(e.target.value)}
-                  placeholder="예: 인천, 부평, 서울"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      searchLocation()
-                    }
-                  }}
-                />
-              </label>
-
-              <button
-                type="button"
-                className="secondary-action"
-                onClick={searchLocation}
-                disabled={locationSearching}
-              >
-                {locationSearching ? '검색 중…' : '지역 검색'}
-              </button>
+            <div className="home-weather-location-card">
+              <div>
+                <span>우리 집 기준 지역</span>
+                <strong>경기도 김포시 구래동</strong>
+                <small>Open-Meteo · 구래동 중심부 근처 좌표 기준</small>
+              </div>
+              <span className="home-weather-location-badge">HOME</span>
             </div>
 
-            {locationResults.length > 0 && (
-              <div className="weather-location-results">
-                {locationResults.map((location) => (
-                  <button
-                    type="button"
-                    key={`${location.latitude}-${location.longitude}-${location.label}`}
-                    onClick={() => {
-                      setDraft({
-                        ...draft,
-                        weatherLocationLabel: location.label,
-                        weatherLatitude: location.latitude,
-                        weatherLongitude: location.longitude,
-                      })
-                      setLocationQuery(location.label)
-                      setLocationResults([])
-                    }}
-                  >
-                    <strong>{location.label}</strong>
-                    <small>{location.latitude.toFixed(3)}, {location.longitude.toFixed(3)}</small>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {typeof draft.weatherLatitude === 'number' &&
-              typeof draft.weatherLongitude === 'number' && (
-                <div className="selected-weather-location">
-                  <span>현재 선택</span>
-                  <strong>{draft.weatherLocationLabel ?? '설정한 지역'}</strong>
-                </div>
-              )}
+            <p className="setting-help">
+              개인용 앱이므로 광역 김포시 검색 대신 구래동 좌표를 기본값으로 고정했습니다.
+              실제 예보는 위도 37.64368 / 경도 126.62370 지점을 기준으로 요청합니다.
+            </p>
 
             <label className="toggle-row">
               <span>
                 <strong>날씨 기반 관리 알림</strong>
-                <small>더운 날 냉방 확인, 매우 습한 날 분무량 확인 같은 안내</small>
+                <small>
+                  더운 날 냉방 확인, 매우 습한 날 분무량 확인 같은 안내
+                </small>
               </span>
               <input
                 type="checkbox"
@@ -461,14 +547,120 @@ export default function MorePage({
                 브라우저 알림 허용
               </button>
               <span>
-                현재 로컬 단계에서는 앱을 열었을 때 알림을 띄웁니다.
-                완전한 아침 자동 알림은 Cloudflare Worker + Web Push 단계에서 연결합니다.
+                지금은 앱을 열었을 때 확인하고, Cloudflare 배포 뒤에는 아침 자동 알림으로 연결할 예정입니다.
               </span>
             </div>
 
             <p className="setting-help">
-              실외 날씨는 사육장 내부와 같지 않으므로 ‘자동 처방’이 아니라 관리 여부를 확인하라는 신호로만 사용합니다.
+              실외 날씨는 사육장 내부와 같지 않으므로 자동 처방이 아니라
+              “오늘은 냉방/분무 상태를 한 번 더 확인하자”는 보조 신호로만 사용합니다.
             </p>
+          </Card>
+
+          <Card title="백업 · 복원" icon="💾">
+            <div className="backup-hero">
+              <div>
+                <span>서버 이전 전 안전장치</span>
+                <strong>기록 + 사진을 한 번에 보관</strong>
+                <small>
+                  D1/R2 연결 전에도 언제든 로컬 데이터를 꺼내둘 수 있어요.
+                </small>
+              </div>
+              <span className="backup-hero-badge">
+                LOCAL
+              </span>
+            </div>
+
+            <div className="backup-action-grid">
+              <button
+                type="button"
+                className="backup-action-card primary"
+                disabled={backupBusy}
+                onClick={() =>
+                  void exportFullBackup()
+                }
+              >
+                <span aria-hidden="true">📦</span>
+                <div>
+                  <strong>전체 백업</strong>
+                  <small>
+                    JSON + CSV + 사진 원본 · TAR
+                  </small>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="backup-action-card"
+                disabled={backupBusy}
+                onClick={() =>
+                  void exportStructuredBackup()
+                }
+              >
+                <span aria-hidden="true">🧾</span>
+                <div>
+                  <strong>기록 JSON</strong>
+                  <small>
+                    구조화 기록만 · 사진 제외
+                  </small>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="backup-action-card"
+                disabled={backupBusy}
+                onClick={() =>
+                  void exportCsvBackup()
+                }
+              >
+                <span aria-hidden="true">📊</span>
+                <div>
+                  <strong>CSV 묶음</strong>
+                  <small>
+                    표로 열기 좋은 기록 모음 · TAR
+                  </small>
+                </div>
+              </button>
+            </div>
+
+            <div className="backup-restore-box">
+              <div>
+                <strong>백업에서 복원</strong>
+                <p>
+                  전체 TAR은 기록과 사진을 모두 교체하고,
+                  기록 JSON은 구조화 기록만 교체합니다.
+                </p>
+              </div>
+
+              <label
+                className={`backup-restore-button ${backupBusy ? 'disabled' : ''}`}
+              >
+                <input
+                  type="file"
+                  accept=".tar,.json,application/x-tar,application/json"
+                  disabled={backupBusy}
+                  onChange={(event) => {
+                    const file =
+                      event.target.files?.[0]
+                    event.target.value = ''
+                    void restoreBackup(file)
+                  }}
+                />
+                {backupBusy
+                  ? '처리 중…'
+                  : '백업 파일 선택'}
+              </label>
+            </div>
+
+            <div className="backup-warning">
+              <strong>⚠️ 로컬 사진 주의</strong>
+              <p>
+                아직 사진은 이 브라우저의 IndexedDB에 있어요.
+                사이트 데이터 삭제나 브라우저 초기화 전에
+                <strong> 전체 백업</strong>을 받아두는 게 가장 안전합니다.
+              </p>
+            </div>
           </Card>
 
           <Card title="체중 측정 일정" icon="⚖️">

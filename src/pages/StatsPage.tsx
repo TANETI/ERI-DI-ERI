@@ -1,6 +1,12 @@
 import { useMemo, useState } from 'react'
 import Card from '../components/Card'
 import {
+  addDays,
+  parseISODate,
+  todayISO,
+  toISODate,
+} from '../lib/date'
+import {
   feedingAmountLabels,
   formatMl,
 } from '../lib/feedingAmount'
@@ -30,9 +36,12 @@ type TrendSummary = {
 }
 
 function cutoffDate(days: number) {
-  const date = new Date()
-  date.setDate(date.getDate() - (days - 1))
-  return date.toISOString().slice(0, 10)
+  return toISODate(
+    addDays(
+      parseISODate(todayISO()),
+      -(days - 1),
+    ),
+  )
 }
 
 function filterByRange<T extends { date: string }>(
@@ -83,6 +92,35 @@ function qualitativeText(value: number) {
   return feedingAmountLabels[index]
 }
 
+function rangeLabel(range: RangeMode) {
+  if (range === '30') return '최근 30일'
+  if (range === '90') return '최근 90일'
+  return '전체 기록'
+}
+
+function changeText(
+  delta: number | null,
+  unit: 'step' | 'ml' | 'g',
+) {
+  if (delta === null) return '비교할 이전 기록 없음'
+
+  if (Math.abs(delta) < 0.0001) {
+    return '직전 기록과 같음'
+  }
+
+  const sign = delta > 0 ? '+' : ''
+
+  if (unit === 'step') {
+    return `직전 대비 ${sign}${delta.toFixed(0)}단계`
+  }
+
+  if (unit === 'ml') {
+    return `직전 대비 ${sign}${formatMl(delta)} mL`
+  }
+
+  return `직전 대비 ${sign}${delta.toFixed(2)} g`
+}
+
 export default function StatsPage({
   feedingLogs,
   weightLogs,
@@ -90,6 +128,24 @@ export default function StatsPage({
   const [feedingMetric, setFeedingMetric] =
     useState<FeedingMetric>('qualitative')
   const [range, setRange] = useState<RangeMode>('30')
+
+  const qualitativeCount = useMemo(
+    () =>
+      filterByRange(feedingLogs, range).filter(
+        (log) => log.amount !== null,
+      ).length,
+    [feedingLogs, range],
+  )
+
+  const mlCount = useMemo(
+    () =>
+      filterByRange(feedingLogs, range).filter(
+        (log) =>
+          typeof log.amountMl === 'number' &&
+          Number.isFinite(log.amountMl),
+      ).length,
+    [feedingLogs, range],
+  )
 
   const feedingPoints = useMemo<TrendPoint[]>(() => {
     const sorted = filterByRange(
@@ -147,15 +203,37 @@ export default function StatsPage({
   const feedingSummary = summarize(feedingPoints)
   const weightSummary = summarize(weightPoints)
 
-  const feedingFormatter =
-    feedingMetric === 'qualitative'
-      ? (value: number) => `${value.toFixed(2)} / 5`
-      : (value: number) => `${formatMl(value)} mL`
+  const feedingAverageText =
+    feedingSummary.average === null
+      ? '—'
+      : feedingMetric === 'qualitative'
+        ? `${qualitativeText(feedingSummary.average)}권 · ${feedingSummary.average.toFixed(2)}/5`
+        : `${formatMl(feedingSummary.average)} mL`
+
+  const feedingRangeText =
+    feedingSummary.min === null ||
+    feedingSummary.max === null
+      ? '—'
+      : feedingMetric === 'qualitative'
+        ? `${qualitativeText(feedingSummary.min)} ~ ${qualitativeText(feedingSummary.max)}`
+        : `${formatMl(feedingSummary.min)} ~ ${formatMl(feedingSummary.max)} mL`
 
   return (
-    <>
+    <div className="stats-page">
+      <section className="stats-page-head">
+        <div>
+          <span>성장 기록</span>
+          <strong>{rangeLabel(range)}</strong>
+        </div>
+
+        <RangeToggle
+          range={range}
+          onChange={setRange}
+        />
+      </section>
+
       <Card title="급여량 추세" icon="🍚">
-        <div className="stats-toolbar">
+        <div className="stats-card-topline">
           <div
             className="feeding-metric-toggle"
             role="group"
@@ -173,39 +251,67 @@ export default function StatsPage({
               }
             >
               체감 단계
+              <small>{qualitativeCount}</small>
             </button>
+
             <button
               type="button"
               className={
-                feedingMetric === 'ml' ? 'active' : ''
+                feedingMetric === 'ml'
+                  ? 'active'
+                  : ''
               }
-              onClick={() => setFeedingMetric('ml')}
+              onClick={() =>
+                setFeedingMetric('ml')
+              }
             >
               mL
+              <small>{mlCount}</small>
             </button>
           </div>
 
-          <RangeToggle
-            range={range}
-            onChange={setRange}
-          />
+          <span className="stats-context">
+            {rangeLabel(range)}
+          </span>
         </div>
 
         <p className="stats-help">
-          기본은 ‘보통/많이’ 같은 체감 단계예요.
-          mL로 기록한 급여가 생기면 같은 방식으로 mL
-          추세도 계산됩니다.
+          평소에는 ‘소량/보통/많이’ 추세를 보고,
+          실제 양을 재기 시작하면 같은 자리에서 mL로 바꿔 볼 수 있어요.
         </p>
 
         {feedingPoints.length ? (
           <>
+            <div className="stats-feature">
+              <div>
+                <span>최근 급여</span>
+                <strong>
+                  {feedingSummary.latest === null
+                    ? '—'
+                    : feedingMetric === 'qualitative'
+                      ? qualitativeText(feedingSummary.latest)
+                      : `${formatMl(feedingSummary.latest)} mL`}
+                </strong>
+              </div>
+
+              <div className="stats-feature-meta">
+                <span>
+                  평균 <strong>{feedingAverageText}</strong>
+                </span>
+                <span>
+                  {changeText(
+                    feedingSummary.deltaFromPrevious,
+                    feedingMetric === 'qualitative'
+                      ? 'step'
+                      : 'ml',
+                  )}
+                </span>
+              </div>
+            </div>
+
             <TrendChart
               points={feedingPoints}
-              minY={
-                feedingMetric === 'qualitative'
-                  ? 0
-                  : 0
-              }
+              minY={0}
               maxY={
                 feedingMetric === 'qualitative'
                   ? 5
@@ -216,112 +322,125 @@ export default function StatsPage({
                   ? '단계'
                   : 'mL'
               }
+              referenceValue={
+                feedingMetric === 'qualitative'
+                  ? 3
+                  : undefined
+              }
+              referenceLabel={
+                feedingMetric === 'qualitative'
+                  ? '보통'
+                  : undefined
+              }
             />
 
-            <div className="stats-summary-grid">
+            <div className="stats-summary-grid stats-summary-grid-three">
               <StatBox
-                label="기록 수"
+                label="기록"
                 value={`${feedingSummary.count}회`}
               />
               <StatBox
                 label="평균"
-                value={
-                  feedingSummary.average === null
-                    ? '—'
-                    : feedingFormatter(
-                        feedingSummary.average,
-                      )
-                }
+                value={feedingAverageText}
               />
               <StatBox
-                label="최근"
-                value={
-                  feedingSummary.latest === null
-                    ? '—'
-                    : feedingMetric === 'qualitative'
-                      ? `${qualitativeText(feedingSummary.latest)} · ${feedingSummary.latest}/5`
-                      : `${formatMl(feedingSummary.latest)} mL`
-                }
-              />
-              <StatBox
-                label="직전 대비"
-                value={
-                  feedingSummary.deltaFromPrevious === null
-                    ? '—'
-                    : `${feedingSummary.deltaFromPrevious >= 0 ? '+' : ''}${
-                        feedingMetric === 'qualitative'
-                          ? feedingSummary.deltaFromPrevious.toFixed(0)
-                          : formatMl(
-                              feedingSummary.deltaFromPrevious,
-                            )
-                      }${feedingMetric === 'ml' ? ' mL' : ''}`
-                }
+                label="범위"
+                value={feedingRangeText}
               />
             </div>
           </>
         ) : (
           <div className="stats-empty">
-            {feedingMetric === 'qualitative'
-              ? '선택한 기간에 체감 단계 급여 기록이 없어요.'
-              : '아직 mL로 기록한 급여가 없어요. 나중에 실제 양을 재기 시작하면 여기에 같은 방식으로 추세가 생깁니다.'}
+            <span aria-hidden="true">
+              {feedingMetric === 'qualitative'
+                ? '🍚'
+                : '🥄'}
+            </span>
+            <strong>
+              {feedingMetric === 'qualitative'
+                ? '이 기간에는 체감 단계 기록이 없어요.'
+                : '아직 mL 기록이 없어요.'}
+            </strong>
+            <p>
+              {feedingMetric === 'qualitative'
+                ? '급여 기록을 남기면 소량·보통·많이의 흐름이 여기에 표시됩니다.'
+                : '나중에 실제 급여량을 재기 시작하면 같은 그래프로 mL 추세를 볼 수 있어요.'}
+            </p>
           </div>
         )}
       </Card>
 
       <Card title="체중 성장" icon="⚖️">
-        <div className="stats-toolbar stats-toolbar-right">
-          <RangeToggle
-            range={range}
-            onChange={setRange}
-          />
-        </div>
-
         {weightPoints.length ? (
           <>
+            <div className="stats-feature">
+              <div>
+                <span>최근 체중</span>
+                <strong>
+                  {weightSummary.latest === null
+                    ? '—'
+                    : `${weightSummary.latest.toFixed(1)} g`}
+                </strong>
+              </div>
+
+              <div className="stats-feature-meta">
+                <span>
+                  평균{' '}
+                  <strong>
+                    {weightSummary.average === null
+                      ? '—'
+                      : `${weightSummary.average.toFixed(2)} g`}
+                  </strong>
+                </span>
+                <span>
+                  {changeText(
+                    weightSummary.deltaFromPrevious,
+                    'g',
+                  )}
+                </span>
+              </div>
+            </div>
+
             <TrendChart
               points={weightPoints}
               unit="g"
             />
 
-            <div className="stats-summary-grid">
+            <div className="stats-summary-grid stats-summary-grid-three">
               <StatBox
-                label="측정 수"
+                label="측정"
                 value={`${weightSummary.count}회`}
               />
               <StatBox
-                label="평균"
+                label="최저"
                 value={
-                  weightSummary.average === null
+                  weightSummary.min === null
                     ? '—'
-                    : `${weightSummary.average.toFixed(2)} g`
+                    : `${weightSummary.min.toFixed(1)} g`
                 }
               />
               <StatBox
-                label="최근"
+                label="최고"
                 value={
-                  weightSummary.latest === null
+                  weightSummary.max === null
                     ? '—'
-                    : `${weightSummary.latest.toFixed(1)} g`
-                }
-              />
-              <StatBox
-                label="직전 대비"
-                value={
-                  weightSummary.deltaFromPrevious === null
-                    ? '—'
-                    : `${weightSummary.deltaFromPrevious >= 0 ? '+' : ''}${weightSummary.deltaFromPrevious.toFixed(2)} g`
+                    : `${weightSummary.max.toFixed(1)} g`
                 }
               />
             </div>
           </>
         ) : (
           <div className="stats-empty">
-            아직 체중 기록이 없어요. 첫 측정에 성공하면
-            성장 그래프가 여기서 시작됩니다.
+            <span aria-hidden="true">⚖️</span>
+            <strong>아직 첫 체중 기록이 없어요.</strong>
+            <p>
+              첫 측정에 성공하면 이 카드에서 에리의 성장선을
+              바로 확인할 수 있어요.
+            </p>
           </div>
         )}
       </Card>
-    </>
+    </div>
   )
 }
 
@@ -348,7 +467,9 @@ function RangeToggle({
         <button
           type="button"
           key={value}
-          className={range === value ? 'active' : ''}
+          className={
+            range === value ? 'active' : ''
+          }
           onClick={() => onChange(value)}
         >
           {label}
@@ -378,22 +499,28 @@ function TrendChart({
   minY,
   maxY,
   unit,
+  referenceValue,
+  referenceLabel,
 }: {
   points: TrendPoint[]
   minY?: number
   maxY?: number
   unit: string
+  referenceValue?: number
+  referenceLabel?: string
 }) {
   const width = 620
-  const height = 230
+  const height = 224
   const left = 42
   const right = 18
-  const top = 20
-  const bottom = 40
+  const top = 18
+  const bottom = 38
   const chartWidth = width - left - right
   const chartHeight = height - top - bottom
 
-  const values = points.map((point) => point.value)
+  const values = points.map(
+    (point) => point.value,
+  )
   const rawMin = Math.min(...values)
   const rawMax = Math.max(...values)
 
@@ -401,7 +528,11 @@ function TrendChart({
     minY ??
     (rawMin === rawMax
       ? Math.max(0, rawMin * 0.9)
-      : Math.max(0, rawMin - (rawMax - rawMin) * 0.12))
+      : Math.max(
+          0,
+          rawMin -
+            (rawMax - rawMin) * 0.12,
+        ))
 
   const yMax =
     maxY ??
@@ -409,41 +540,53 @@ function TrendChart({
       ? rawMax === 0
         ? 1
         : rawMax * 1.1
-      : rawMax + (rawMax - rawMin) * 0.12)
+      : rawMax +
+        (rawMax - rawMin) * 0.12)
 
   const dates = points.map((point) =>
-    new Date(`${point.date}T00:00:00`).getTime(),
+    new Date(
+      `${point.date}T00:00:00`,
+    ).getTime(),
   )
   const minDate = Math.min(...dates)
   const maxDate = Math.max(...dates)
 
-  const xFor = (time: number, index: number) => {
-    if (points.length === 1 || minDate === maxDate) {
+  const xFor = (time: number) => {
+    if (
+      points.length === 1 ||
+      minDate === maxDate
+    ) {
       return left + chartWidth / 2
     }
 
     return (
       left +
-      ((time - minDate) / (maxDate - minDate)) *
+      ((time - minDate) /
+        (maxDate - minDate)) *
         chartWidth
     )
   }
 
   const yFor = (value: number) => {
-    if (yMax === yMin) return top + chartHeight / 2
+    if (yMax === yMin) {
+      return top + chartHeight / 2
+    }
 
     return (
       top +
-      ((yMax - value) / (yMax - yMin)) *
+      ((yMax - value) /
+        (yMax - yMin)) *
         chartHeight
     )
   }
 
-  const coords = points.map((point, index) => ({
-    ...point,
-    x: xFor(dates[index], index),
-    y: yFor(point.value),
-  }))
+  const coords = points.map(
+    (point, index) => ({
+      ...point,
+      x: xFor(dates[index]),
+      y: yFor(point.value),
+    }),
+  )
 
   const path = coords
     .map(
@@ -455,6 +598,13 @@ function TrendChart({
   const first = points[0]
   const last = points[points.length - 1]
 
+  const referenceY =
+    referenceValue !== undefined &&
+    referenceValue >= yMin &&
+    referenceValue <= yMax
+      ? yFor(referenceValue)
+      : null
+
   return (
     <div className="trend-chart-wrap">
       <svg
@@ -464,9 +614,11 @@ function TrendChart({
         aria-label={`${unit} 추세 그래프`}
       >
         {[0, 0.5, 1].map((ratio) => {
-          const y = top + chartHeight * ratio
+          const y =
+            top + chartHeight * ratio
           const value =
-            yMax - (yMax - yMin) * ratio
+            yMax -
+            (yMax - yMin) * ratio
 
           return (
             <g key={ratio}>
@@ -484,12 +636,34 @@ function TrendChart({
                 textAnchor="end"
               >
                 {unit === '단계'
-                  ? value.toFixed(1)
+                  ? value.toFixed(0)
                   : value.toFixed(2)}
               </text>
             </g>
           )
         })}
+
+        {referenceY !== null && (
+          <g>
+            <line
+              x1={left}
+              x2={width - right}
+              y1={referenceY}
+              y2={referenceY}
+              className="trend-reference-line"
+            />
+            {referenceLabel && (
+              <text
+                x={width - right}
+                y={referenceY - 6}
+                className="trend-reference-label"
+                textAnchor="end"
+              >
+                {referenceLabel}
+              </text>
+            )}
+          </g>
+        )}
 
         {coords.length > 1 && (
           <path
@@ -499,23 +673,27 @@ function TrendChart({
           />
         )}
 
-        {coords.map((point, index) => (
-          <g key={`${point.date}-${point.value}-${index}`}>
-            <circle
-              cx={point.x}
-              cy={point.y}
-              r="5"
-              className="trend-dot"
-            />
-            <title>
-              {point.date} · {point.label}
-            </title>
-          </g>
-        ))}
+        {coords.map(
+          (point, index) => (
+            <g
+              key={`${point.date}-${point.value}-${index}`}
+            >
+              <circle
+                cx={point.x}
+                cy={point.y}
+                r="5"
+                className="trend-dot"
+              />
+              <title>
+                {point.date} · {point.label}
+              </title>
+            </g>
+          ),
+        )}
 
         <text
           x={left}
-          y={height - 12}
+          y={height - 11}
           className="trend-date-label"
           textAnchor="start"
         >
@@ -524,7 +702,7 @@ function TrendChart({
 
         <text
           x={width - right}
-          y={height - 12}
+          y={height - 11}
           className="trend-date-label"
           textAnchor="end"
         >
@@ -536,6 +714,7 @@ function TrendChart({
 }
 
 function shortDate(date: string) {
-  const [, month, day] = date.split('-')
+  const [, month, day] =
+    date.split('-')
   return `${Number(month)}/${Number(day)}`
 }

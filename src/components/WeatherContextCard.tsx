@@ -1,5 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Card from './Card'
+import {
+  currentKoreaHour,
+  todayISO,
+} from '../lib/date'
 import {
   buildWeatherAdvice,
   fetchWeatherForDate,
@@ -13,6 +17,16 @@ type Props = {
   settings: AppSettings
   compact?: boolean
   title?: string
+}
+
+function currentKoreanHourForDate(date: string) {
+  return date === todayISO()
+    ? currentKoreaHour()
+    : null
+}
+
+function formatHour(hour: number) {
+  return String(hour).padStart(2, '0')
 }
 
 export default function WeatherContextCard({
@@ -33,6 +47,7 @@ export default function WeatherContextCard({
   const [snapshot, setSnapshot] = useState<WeatherSnapshot | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const periodStripRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -76,6 +91,34 @@ export default function WeatherContextCard({
     settings.weatherAlertsEnabled,
   ])
 
+
+  useEffect(() => {
+    if (!snapshot) return
+
+    const currentHour = currentKoreanHourForDate(snapshot.date)
+    if (currentHour === null) return
+
+    const strip = periodStripRef.current
+    const currentCard = strip?.querySelector<HTMLElement>(
+      '[data-current-period="true"]',
+    )
+
+    if (!strip || !currentCard) return
+
+    const frame = window.requestAnimationFrame(() => {
+      const targetLeft =
+        currentCard.offsetLeft -
+        (strip.clientWidth - currentCard.offsetWidth) / 2
+
+      strip.scrollTo({
+        left: Math.max(0, targetLeft),
+        behavior: 'smooth',
+      })
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [snapshot])
+
   const className = compact ? 'weather-card compact' : 'weather-card'
 
   if (!location) {
@@ -106,27 +149,87 @@ export default function WeatherContextCard({
 
   return (
     <Card title={title} icon="☁️" className={className}>
-      <div className="weather-summary">
-        <div>
-          <span>지역</span>
-          <strong>{snapshot.locationLabel}</strong>
-        </div>
-        <div>
-          <span>기온</span>
+      <div className="weather-source-line">
+        <span className="weather-source-badge">구래동 기준</span>
+        <span>{snapshot.locationLabel}</span>
+      </div>
+
+      <div className="weather-day-overview" aria-label="하루 전체 요약">
+        <span>
+          하루 전체
           <strong>{snapshot.temperatureMin}–{snapshot.temperatureMax}℃</strong>
-        </div>
-        <div>
-          <span>습도</span>
+        </span>
+        <span>
+          습도
           <strong>{snapshot.humidityMin}–{snapshot.humidityMax}%</strong>
-        </div>
-        <div>
-          <span>강수</span>
+        </span>
+        <span>
+          강수
           <strong>
             {snapshot.precipitationSum} mm
             {snapshot.precipitationProbabilityMax !== undefined
               ? ` · 최대 ${snapshot.precipitationProbabilityMax}%`
               : ''}
           </strong>
+        </span>
+        <span className="weather-day-source">Open-Meteo</span>
+      </div>
+
+      <div className="weather-dial-wrap">
+        <div className="weather-dial-center-mark" aria-hidden="true" />
+
+        <div
+          className="weather-period-dial"
+          ref={periodStripRef}
+          aria-label="2시간 단위 날씨 다이얼"
+        >
+          {snapshot.periods2h.map((period) => {
+            const currentHour = currentKoreanHourForDate(snapshot.date)
+            const isCurrent =
+              currentHour !== null &&
+              currentHour >= period.startHour &&
+              currentHour < period.endHour
+
+            return (
+              <div
+                className={`weather-dial-card ${isCurrent ? 'current' : ''}`}
+                data-current-period={isCurrent ? 'true' : 'false'}
+                key={`${period.startHour}-${period.endHour}`}
+              >
+                <div className="weather-dial-time">
+                  <strong>{formatHour(period.startHour)}</strong>
+                  <span>–{formatHour(period.endHour)}</span>
+                </div>
+
+                <div className="weather-dial-label">
+                  {isCurrent ? '지금' : period.label}
+                </div>
+
+                <div className="weather-dial-temp">
+                  {period.temperatureMin === period.temperatureMax
+                    ? `${period.temperatureMin}℃`
+                    : `${period.temperatureMin}–${period.temperatureMax}℃`}
+                </div>
+
+                <div className="weather-dial-meta">
+                  <span>
+                    💧 {period.humidityMin === period.humidityMax
+                      ? `${period.humidityMin}%`
+                      : `${period.humidityMin}–${period.humidityMax}%`}
+                  </span>
+
+                  {(period.precipitationSum > 0 ||
+                    (period.precipitationProbabilityMax ?? 0) > 0) && (
+                    <span>
+                      ☔ {period.precipitationSum > 0
+                        ? `${period.precipitationSum} mm`
+                        : `${period.precipitationProbabilityMax}%`}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
 
@@ -143,7 +246,7 @@ export default function WeatherContextCard({
       </div>
 
       <p className="weather-disclaimer">
-        지역 실외 날씨를 바탕으로 한 ‘확인 알림’이에요. 사육장 내부 온습도를 그대로 뜻하지는 않습니다.
+        구래동 중심부 근처 좌표의 실외 날씨를 바탕으로 한 ‘확인 알림’이에요. 사육장 내부 온습도를 그대로 뜻하지는 않습니다.
       </p>
     </Card>
   )

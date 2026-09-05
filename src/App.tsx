@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import BottomNav from './components/BottomNav'
 import AlbumPage from './pages/AlbumPage'
 import CalendarPage from './pages/CalendarPage'
 import MorePage from './pages/MorePage'
 import RecordPage from './pages/RecordPage'
 import TodayPage from './pages/TodayPage'
-import { store } from './lib/storage'
-import { toISODate } from './lib/date'
+import { todayISO, toISODate } from './lib/date'
+import { appRepository } from './data'
+import { defaultSettings } from './lib/defaultSettings'
 import {
   commitScheduleChanges,
   reanchorWeightSchedule,
@@ -15,7 +16,10 @@ import {
 import type {
   AppSettings,
   DefecationLog,
+  EvaluationLog,
   FeedingLog,
+  ManagementDecision,
+  PhotoMeta,
   PresetGroup,
   PresetSelection,
   TmiLog,
@@ -24,28 +28,129 @@ import type {
 
 type Tab = 'today' | 'calendar' | 'record' | 'album' | 'more'
 
-store.initialize()
 
 export default function App() {
 
   const [tab, setTab] = useState<Tab>('today')
-  const [recordDate, setRecordDate] = useState(toISODate(new Date()))
-  const [settings, setSettings] = useState<AppSettings>(() => store.getSettings())
-  const [feedingLogs, setFeedingLogs] = useState<FeedingLog[]>(() => store.getFeedingLogs())
-  const [weightLogs, setWeightLogs] = useState<WeightLog[]>(() => store.getWeightLogs())
-  const [tmiLogs, setTmiLogs] = useState<TmiLog[]>(() => store.getTmiLogs())
-  const [presetSelections, setPresetSelections] = useState<PresetSelection[]>(() => store.getPresetSelections())
-  const [defecationLogs, setDefecationLogs] = useState<DefecationLog[]>(() => store.getDefecationLogs())
+  const [recordDate, setRecordDate] = useState(todayISO())
+
+  const [settings, setSettings] =
+    useState<AppSettings>(defaultSettings)
+  const [feedingLogs, setFeedingLogs] =
+    useState<FeedingLog[]>([])
+  const [weightLogs, setWeightLogs] =
+    useState<WeightLog[]>([])
+  const [tmiLogs, setTmiLogs] =
+    useState<TmiLog[]>([])
+  const [presetSelections, setPresetSelections] =
+    useState<PresetSelection[]>([])
+  const [defecationLogs, setDefecationLogs] =
+    useState<DefecationLog[]>([])
+  const [evaluationLogs, setEvaluationLogs] =
+    useState<EvaluationLog[]>([])
+  const [managementDecisions, setManagementDecisions] =
+    useState<ManagementDecision[]>([])
+
+  const [photos, setPhotos] =
+    useState<PhotoMeta[]>([])
+  const [photosLoading, setPhotosLoading] =
+    useState(true)
+
+  const [booting, setBooting] =
+    useState(true)
+  const [dataError, setDataError] =
+    useState('')
+
+  // 향후 원격 저장소에서도 빠른 연속 입력의 쓰기 순서가
+  // 뒤집히지 않도록 구조화 기록 저장을 직렬화한다.
+  const writeQueueRef =
+    useRef<Promise<void>>(Promise.resolve())
+
+  useEffect(() => {
+    let active = true
+
+    const load = async () => {
+      try {
+        await appRepository.initialize()
+
+        const [
+          data,
+          photoMeta,
+        ] = await Promise.all([
+          appRepository.getStructuredData(),
+          appRepository.listPhotos(),
+        ])
+
+        if (!active) return
+
+        setSettings(data.settings)
+        setFeedingLogs(data.feedingLogs)
+        setWeightLogs(data.weightLogs)
+        setTmiLogs(data.tmiLogs)
+        setPresetSelections(data.presetSelections)
+        setDefecationLogs(data.defecationLogs)
+        setEvaluationLogs(data.evaluationLogs)
+        setManagementDecisions(
+          data.managementDecisions,
+        )
+        setPhotos(photoMeta)
+        setDataError('')
+      } catch (error) {
+        if (!active) return
+
+        setDataError(
+          error instanceof Error
+            ? error.message
+            : '저장된 데이터를 불러오지 못했어요.',
+        )
+      } finally {
+        if (active) {
+          setPhotosLoading(false)
+          setBooting(false)
+        }
+      }
+    }
+
+    void load()
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   useEffect(() => {
     document.documentElement.dataset.font = settings.fontPreset
   }, [settings.fontPreset])
 
+  const persist = (
+    operation: () => Promise<void>,
+  ) => {
+    const previous =
+      writeQueueRef.current ??
+      Promise.resolve()
+
+    writeQueueRef.current =
+      previous
+        .then(operation)
+        .catch((error) => {
+          console.error(
+            'ERI DI-ERY repository write failed',
+            error,
+          )
+
+          setDataError(
+            error instanceof Error
+              ? `저장 중 오류: ${error.message}`
+              : '저장 중 오류가 발생했어요.',
+          )
+        })
+  }
+
 
 const addFeeding = (log: FeedingLog) => {
   setFeedingLogs((prev) => {
     const next = [log, ...prev]
-    store.saveFeedingLogs(next)
+    persist(() => appRepository.saveFeedingLogs(next))
     return next
   })
 }
@@ -53,26 +158,26 @@ const addFeeding = (log: FeedingLog) => {
 const updateFeeding = (log: FeedingLog) => {
   const next = feedingLogs.map((item) => (item.id === log.id ? log : item))
   setFeedingLogs(next)
-  store.saveFeedingLogs(next)
+  persist(() => appRepository.saveFeedingLogs(next))
 }
 
 const deleteFeeding = (id: string) => {
   const next = feedingLogs.filter((item) => item.id !== id)
   setFeedingLogs(next)
-  store.saveFeedingLogs(next)
+  persist(() => appRepository.saveFeedingLogs(next))
 }
 
 const addWeight = (log: WeightLog) => {
   setWeightLogs((prev) => {
     const next = [log, ...prev]
-    store.saveWeightLogs(next)
+    persist(() => appRepository.saveWeightLogs(next))
     return next
   })
 
   setSettings((prev) => {
     if (prev.weightStartDate) return prev
     const next = startWeightSchedule(prev, log.date)
-    store.saveSettings(next)
+    persist(() => appRepository.saveSettings(next))
     return next
   })
 }
@@ -82,7 +187,7 @@ const updateWeight = (log: WeightLog) => {
   const next = weightLogs.map((item) => (item.id === log.id ? log : item))
 
   setWeightLogs(next)
-  store.saveWeightLogs(next)
+  persist(() => appRepository.saveWeightLogs(next))
 
   if (
     previous &&
@@ -97,7 +202,7 @@ const updateWeight = (log: WeightLog) => {
     )
 
     setSettings(nextSettings)
-    store.saveSettings(nextSettings)
+    persist(() => appRepository.saveSettings(nextSettings))
   }
 }
 
@@ -106,7 +211,7 @@ const deleteWeight = (id: string) => {
   const next = weightLogs.filter((item) => item.id !== id)
 
   setWeightLogs(next)
-  store.saveWeightLogs(next)
+  persist(() => appRepository.saveWeightLogs(next))
 
   if (
     target &&
@@ -121,14 +226,14 @@ const deleteWeight = (id: string) => {
     )
 
     setSettings(nextSettings)
-    store.saveSettings(nextSettings)
+    persist(() => appRepository.saveSettings(nextSettings))
   }
 }
 
 const addTmi = (log: TmiLog) => {
   setTmiLogs((prev) => {
     const next = [log, ...prev]
-    store.saveTmiLogs(next)
+    persist(() => appRepository.saveTmiLogs(next))
     return next
   })
 }
@@ -136,13 +241,13 @@ const addTmi = (log: TmiLog) => {
 const updateTmi = (log: TmiLog) => {
   const next = tmiLogs.map((item) => (item.id === log.id ? log : item))
   setTmiLogs(next)
-  store.saveTmiLogs(next)
+  persist(() => appRepository.saveTmiLogs(next))
 }
 
 const deleteTmi = (id: string) => {
   const next = tmiLogs.filter((item) => item.id !== id)
   setTmiLogs(next)
-  store.saveTmiLogs(next)
+  persist(() => appRepository.saveTmiLogs(next))
 }
 
 const addPreset = (log: PresetSelection) => {
@@ -157,7 +262,7 @@ const addPreset = (log: PresetSelection) => {
     if (duplicate) return prev
 
     const next = [log, ...prev]
-    store.savePresetSelections(next)
+    persist(() => appRepository.savePresetSelections(next))
     return next
   })
 }
@@ -165,7 +270,7 @@ const addPreset = (log: PresetSelection) => {
 const updatePreset = (log: PresetSelection) => {
   setPresetSelections((prev) => {
     const next = prev.map((item) => (item.id === log.id ? log : item))
-    store.savePresetSelections(next)
+    persist(() => appRepository.savePresetSelections(next))
     return next
   })
 }
@@ -173,7 +278,7 @@ const updatePreset = (log: PresetSelection) => {
 const deletePreset = (id: string) => {
   setPresetSelections((prev) => {
     const next = prev.filter((item) => item.id !== id)
-    store.savePresetSelections(next)
+    persist(() => appRepository.savePresetSelections(next))
     return next
   })
 }
@@ -205,7 +310,7 @@ const setPresetGroup = (
     })
 
     const next = [...preserved, ...nextGroup]
-    store.savePresetSelections(next)
+    persist(() => appRepository.savePresetSelections(next))
     return next
   })
 }
@@ -213,7 +318,7 @@ const setPresetGroup = (
 const addDefecation = (log: DefecationLog) => {
   setDefecationLogs((prev) => {
     const next = [log, ...prev]
-    store.saveDefecationLogs(next)
+    persist(() => appRepository.saveDefecationLogs(next))
     return next
   })
 }
@@ -223,19 +328,167 @@ const updateDefecation = (log: DefecationLog) => {
     item.id === log.id ? log : item,
   )
   setDefecationLogs(next)
-  store.saveDefecationLogs(next)
+  persist(() => appRepository.saveDefecationLogs(next))
 }
 
 const deleteDefecation = (id: string) => {
   const next = defecationLogs.filter((item) => item.id !== id)
   setDefecationLogs(next)
-  store.saveDefecationLogs(next)
+  persist(() => appRepository.saveDefecationLogs(next))
+}
+
+const addEvaluation = (log: EvaluationLog) => {
+  setEvaluationLogs((prev) => {
+    const next = [log, ...prev]
+    persist(() => appRepository.saveEvaluationLogs(next))
+    return next
+  })
+}
+
+const updateEvaluation = (log: EvaluationLog) => {
+  setEvaluationLogs((prev) => {
+    const next = prev.map((item) =>
+      item.id === log.id ? log : item,
+    )
+    persist(() => appRepository.saveEvaluationLogs(next))
+    return next
+  })
+}
+
+const deleteEvaluation = (id: string) => {
+  setEvaluationLogs((prev) => {
+    const next = prev.filter((item) => item.id !== id)
+    persist(() => appRepository.saveEvaluationLogs(next))
+    return next
+  })
+}
+
+const addManagementDecision = (
+  log: ManagementDecision,
+) => {
+  setManagementDecisions((prev) => {
+    const next = [log, ...prev]
+    persist(() => appRepository.saveManagementDecisions(next))
+    return next
+  })
+}
+
+const updateManagementDecision = (
+  log: ManagementDecision,
+) => {
+  setManagementDecisions((prev) => {
+    const next = prev.map((item) =>
+      item.id === log.id ? log : item,
+    )
+    persist(() => appRepository.saveManagementDecisions(next))
+    return next
+  })
+}
+
+const deleteManagementDecision = (id: string) => {
+  setManagementDecisions((prev) => {
+    const next = prev.filter((item) => item.id !== id)
+    persist(() => appRepository.saveManagementDecisions(next))
+    return next
+  })
+}
+
+const refreshPhotos = async () => {
+  const next = await appRepository.listPhotos()
+  setPhotos(next)
+}
+
+const addPhotos = async (
+  date: string,
+  files: File[],
+) => {
+  if (!files.length) return
+
+  let hasCover = photos.some(
+    (photo) => photo.date === date && photo.isCover,
+  )
+
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) continue
+
+    await appRepository.addPhoto(
+      file,
+      date,
+      !hasCover,
+    )
+
+    hasCover = true
+  }
+
+  await refreshPhotos()
+}
+
+const updatePhotoCaption = async (
+  id: string,
+  caption: string,
+) => {
+  const photo = photos.find((item) => item.id === id)
+  if (!photo) return
+
+  await appRepository.savePhotoMeta({
+    ...photo,
+    caption: caption || undefined,
+  })
+  await refreshPhotos()
+}
+
+const setPhotoCover = async (id: string) => {
+  const target = photos.find((item) => item.id === id)
+  if (!target) return
+
+  const sameDate = photos.filter(
+    (item) => item.date === target.date,
+  )
+
+  await Promise.all(
+    sameDate.map((photo) =>
+      appRepository.savePhotoMeta({
+        ...photo,
+        isCover: photo.id === id,
+      }),
+    ),
+  )
+
+  await refreshPhotos()
+}
+
+const deletePhoto = async (id: string) => {
+  const target = photos.find((item) => item.id === id)
+  if (!target) return
+
+  await appRepository.deletePhoto(id)
+
+  if (target.isCover) {
+    const replacement = photos
+      .filter(
+        (item) =>
+          item.date === target.date &&
+          item.id !== id,
+      )
+      .sort((a, b) =>
+        b.createdAt.localeCompare(a.createdAt),
+      )[0]
+
+    if (replacement) {
+      await appRepository.savePhotoMeta({
+        ...replacement,
+        isCover: true,
+      })
+    }
+  }
+
+  await refreshPhotos()
 }
 
   const saveSettings = (draft: AppSettings) => {
     const next = commitScheduleChanges(settings, draft)
     setSettings(next)
-    store.saveSettings(next)
+    persist(() => appRepository.saveSettings(next))
   }
 
   const openRecord = (date: string) => {
@@ -243,15 +496,39 @@ const deleteDefecation = (id: string) => {
     setTab('record')
   }
 
+  if (booting) {
+    return (
+      <div className="app-bootstrap">
+        <span aria-hidden="true">🦎</span>
+        <strong>에리의 기록을 불러오는 중…</strong>
+        <small>ERI DI-ERY</small>
+      </div>
+    )
+  }
+
   return (
     <div className="app-shell">
+      {dataError && (
+        <button
+          type="button"
+          className="repository-error-banner"
+          onClick={() => setDataError('')}
+          title="눌러서 닫기"
+        >
+          <span aria-hidden="true">⚠️</span>
+          <span>{dataError}</span>
+        </button>
+      )}
+
       <div className="content-shell">
         {tab === 'today' && (
           <TodayPage
             settings={settings}
             feedingLogs={feedingLogs}
             weightLogs={weightLogs}
-            onQuickRecord={() => openRecord(toISODate(new Date()))}
+            photos={photos}
+            onQuickRecord={() => openRecord(todayISO())}
+            onOpenAlbum={() => setTab('album')}
           />
         )}
 
@@ -263,6 +540,7 @@ const deleteDefecation = (id: string) => {
             tmiLogs={tmiLogs}
             presetSelections={presetSelections}
             defecationLogs={defecationLogs}
+            photos={photos}
             onAddRecord={openRecord}
           />
         )}
@@ -295,7 +573,16 @@ const deleteDefecation = (id: string) => {
           />
         )}
 
-        {tab === 'album' && <AlbumPage />}
+        {tab === 'album' && (
+          <AlbumPage
+            photos={photos}
+            loading={photosLoading}
+            onAddPhotos={addPhotos}
+            onUpdateCaption={updatePhotoCaption}
+            onSetCover={setPhotoCover}
+            onDeletePhoto={deletePhoto}
+          />
+        )}
 
         {tab === 'more' && (
           <MorePage
@@ -305,6 +592,14 @@ const deleteDefecation = (id: string) => {
             tmiLogs={tmiLogs}
             presetSelections={presetSelections}
             defecationLogs={defecationLogs}
+            evaluationLogs={evaluationLogs}
+            managementDecisions={managementDecisions}
+            onAddEvaluation={addEvaluation}
+            onUpdateEvaluation={updateEvaluation}
+            onDeleteEvaluation={deleteEvaluation}
+            onAddManagementDecision={addManagementDecision}
+            onUpdateManagementDecision={updateManagementDecision}
+            onDeleteManagementDecision={deleteManagementDecision}
             onSave={saveSettings}
           />
         )}
@@ -313,7 +608,7 @@ const deleteDefecation = (id: string) => {
       <BottomNav
         current={tab}
         onChange={(next) => {
-          if (next === 'record') openRecord(toISODate(new Date()))
+          if (next === 'record') openRecord(todayISO())
           else setTab(next)
         }}
       />

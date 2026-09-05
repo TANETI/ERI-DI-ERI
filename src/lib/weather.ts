@@ -1,3 +1,4 @@
+import { todayISO } from './date'
 import type {
   AppSettings,
   WeatherAdvice,
@@ -5,17 +6,9 @@ import type {
   WeatherSnapshot,
 } from '../types'
 
-type GeocodingResult = {
-  name: string
-  latitude: number
-  longitude: number
-  country?: string
-  admin1?: string
-  admin2?: string
-}
-
 type HourlyResponse = {
   hourly?: {
+    time?: string[]
     temperature_2m?: Array<number | null>
     relative_humidity_2m?: Array<number | null>
     precipitation?: Array<number | null>
@@ -36,6 +29,95 @@ function validNumbers(values?: Array<number | null>): number[] {
   )
 }
 
+function valueAt(
+  values: Array<number | null> | undefined,
+  index: number,
+): number | null {
+  const value = values?.[index]
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value
+    : null
+}
+
+const PERIOD_LABELS = [
+  '한밤',
+  '한밤',
+  '새벽',
+  '아침',
+  '오전',
+  '오전',
+  '낮',
+  '오후',
+  '저녁',
+  '저녁',
+  '밤',
+  '밤',
+] as const
+
+function buildTwoHourPeriods(
+  hourly: NonNullable<HourlyResponse['hourly']>,
+) {
+  const times = hourly.time ?? []
+
+  return Array.from({ length: 12 }, (_, periodIndex) => {
+    const startHour = periodIndex * 2
+    const endHour = startHour + 2
+
+    const indices = times.length
+      ? times.flatMap((time, index) => {
+          const hour = Number(time.slice(11, 13))
+          return hour >= startHour && hour < endHour
+            ? [index]
+            : []
+        })
+      : Array.from({ length: 2 }, (_, offset) => startHour + offset)
+
+    const temperatures = indices.flatMap((index) => {
+      const value = valueAt(hourly.temperature_2m, index)
+      return value === null ? [] : [value]
+    })
+
+    const humidities = indices.flatMap((index) => {
+      const value = valueAt(hourly.relative_humidity_2m, index)
+      return value === null ? [] : [value]
+    })
+
+    const precipitation = indices.flatMap((index) => {
+      const value = valueAt(hourly.precipitation, index)
+      return value === null ? [] : [value]
+    })
+
+    const precipitationProbability = indices.flatMap((index) => {
+      const value = valueAt(hourly.precipitation_probability, index)
+      return value === null ? [] : [value]
+    })
+
+    return {
+      startHour,
+      endHour,
+      label: PERIOD_LABELS[periodIndex],
+      temperatureMin: temperatures.length
+        ? round(Math.min(...temperatures))
+        : 0,
+      temperatureMax: temperatures.length
+        ? round(Math.max(...temperatures))
+        : 0,
+      humidityMin: humidities.length
+        ? Math.round(Math.min(...humidities))
+        : 0,
+      humidityMax: humidities.length
+        ? Math.round(Math.max(...humidities))
+        : 0,
+      precipitationSum: round(
+        precipitation.reduce((sum, value) => sum + value, 0),
+      ),
+      precipitationProbabilityMax: precipitationProbability.length
+        ? Math.round(Math.max(...precipitationProbability))
+        : undefined,
+    }
+  })
+}
+
 function cacheKey(date: string, latitude: number, longitude: number) {
   return `${CACHE_PREFIX}${date}.${latitude.toFixed(3)}.${longitude.toFixed(3)}`
 }
@@ -50,8 +132,14 @@ function readCache(
     if (!raw) return null
 
     const snapshot = JSON.parse(raw) as WeatherSnapshot
+
+    // Phase 3.5 이전 캐시는 2시간 구간 자료가 없으므로 새로 받는다.
+    if (!Array.isArray(snapshot.periods2h) || snapshot.periods2h.length !== 12) {
+      return null
+    }
+
     const age = Date.now() - new Date(snapshot.fetchedAt).getTime()
-    const today = new Date().toISOString().slice(0, 10)
+    const today = todayISO()
     const maxAge =
       date >= today
         ? 3 * 60 * 60 * 1000
@@ -68,36 +156,6 @@ function writeCache(snapshot: WeatherSnapshot) {
     cacheKey(snapshot.date, snapshot.latitude, snapshot.longitude),
     JSON.stringify(snapshot),
   )
-}
-
-export async function searchWeatherLocations(
-  query: string,
-): Promise<WeatherLocation[]> {
-  const trimmed = query.trim()
-  if (!trimmed) return []
-
-  const url = new URL('https://geocoding-api.open-meteo.com/v1/search')
-  url.searchParams.set('name', trimmed)
-  url.searchParams.set('count', '6')
-  url.searchParams.set('language', 'ko')
-  url.searchParams.set('format', 'json')
-
-  const response = await fetch(url)
-  if (!response.ok) throw new Error('지역 검색에 실패했습니다.')
-
-  const data = (await response.json()) as { results?: GeocodingResult[] }
-
-  return (data.results ?? []).map((item) => {
-    const region = [item.admin2, item.admin1, item.country]
-      .filter(Boolean)
-      .join(', ')
-
-    return {
-      label: region ? `${item.name} · ${region}` : item.name,
-      latitude: item.latitude,
-      longitude: item.longitude,
-    }
-  })
 }
 
 export function weatherLocationFromSettings(
@@ -125,7 +183,7 @@ export async function fetchWeatherForDate(
   const cached = readCache(date, location.latitude, location.longitude)
   if (cached) return cached
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO()
   const isPast = date < today
   const endpoint = isPast
     ? 'https://archive-api.open-meteo.com/v1/archive'
@@ -186,6 +244,7 @@ export async function fetchWeatherForDate(
     precipitationProbabilityMax: precipitationProbability.length
       ? Math.round(Math.max(...precipitationProbability))
       : undefined,
+    periods2h: buildTwoHourPeriods(data.hourly ?? {}),
     fetchedAt: new Date().toISOString(),
   }
 
@@ -233,9 +292,9 @@ export function buildWeatherAdvice(
     result.push({
       id: 'humid',
       icon: '💧',
-      title: '오늘은 분무를 조금 보수적으로',
+      title: '분무 전에 사육장 상태를 확인해요',
       message:
-        '바깥 공기가 매우 습하거나 비가 오는 날이에요. 사육장이 평소보다 천천히 마를 수 있으니 분무 전에 내부 상태를 보고, 필요하면 평소보다 양을 줄이는 편이 좋아요.',
+        '바깥 공기가 매우 습하거나 비가 오는 날이에요. 사육장이 평소보다 천천히 마를 가능성이 있으니, 분무량을 정하기 전에 사육장 내부 습도와 마르는 속도를 먼저 확인해요.',
       level: 'check',
     })
   } else if (snapshot.humidityAverage <= 45) {
@@ -244,7 +303,7 @@ export function buildWeatherAdvice(
       icon: '🍂',
       title: '오늘은 건조 속도를 확인해요',
       message:
-        '바깥 공기가 건조해요. 사육장이 평소보다 빨리 마를 수 있으니 저녁 분무 뒤 상태를 한 번 더 확인해 주세요.',
+        '바깥 공기가 건조해요. 사육장이 평소보다 빨리 마를 가능성이 있으니, 저녁 분무 뒤에는 내부 습도와 마르는 속도를 한 번 더 확인해요.',
       level: 'info',
     })
   }
@@ -255,7 +314,7 @@ export function buildWeatherAdvice(
       icon: '🌿',
       title: '날씨상 특별한 관리 신호는 없어요',
       message:
-        '오늘 지역 날씨만 보면 큰 변수가 두드러지지 않아요. 평소 루틴대로 관리하면 됩니다.',
+        '오늘 지역 날씨만 보면 큰 변수가 두드러지지 않아요. 평소 루틴을 유지하되 실제 판단은 사육장 내부 측정과 에리의 상태를 우선해요.',
       level: 'info',
     })
   }
@@ -269,7 +328,7 @@ export async function maybeNotifyWeatherAdvice(
   settings: AppSettings,
 ) {
   if (!settings.weatherAlertsEnabled) return
-  if (snapshot.date !== new Date().toISOString().slice(0, 10)) return
+  if (snapshot.date !== todayISO()) return
   if (!('Notification' in window)) return
   if (Notification.permission !== 'granted') return
 

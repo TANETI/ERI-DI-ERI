@@ -1,3 +1,61 @@
+
+
+export type StructuredDataSnapshot = {
+  settings: AppSettings
+  feedingLogs: FeedingLog[]
+  weightLogs: WeightLog[]
+  tmiLogs: TmiLog[]
+  presetSelections: PresetSelection[]
+  environmentLogs: EnvironmentLog[]
+  defecationLogs: DefecationLog[]
+  evaluationLogs: EvaluationLog[]
+  managementDecisions: ManagementDecision[]
+}
+
+export type PhotoMeta = {
+  id: string
+  date: string
+  createdAt: string
+  caption?: string
+  isCover: boolean
+  fileName: string
+  mimeType: string
+  sizeBytes: number
+}
+
+
+export type EvaluationLog = {
+  id: string
+  createdAt: string
+  reportStart: string
+  reportEnd: string
+  text: string
+}
+
+export type DecisionCategory =
+  | 'feeding'
+  | 'weight'
+  | 'weather'
+  | 'habitat'
+  | 'observation'
+  | 'other'
+
+export type DecisionStatus =
+  | 'planned'
+  | 'applied'
+  | 'ended'
+
+export type ManagementDecision = {
+  id: string
+  date: string
+  createdAt: string
+  category: DecisionCategory
+  status: DecisionStatus
+  title: string
+  detail?: string
+  evaluationId?: string
+}
+
 export type FeedingAmount = 0 | 1 | 2 | 3 | 4 | 5
 export type FontPreset = 'system' | 'malgun' | 'pretendard' | 'serif' | 'rounded'
 
@@ -73,6 +131,18 @@ export type WeatherLocation = {
   longitude: number
 }
 
+export type WeatherPeriodSummary = {
+  startHour: number
+  endHour: number
+  label: string
+  temperatureMin: number
+  temperatureMax: number
+  humidityMin: number
+  humidityMax: number
+  precipitationSum: number
+  precipitationProbabilityMax?: number
+}
+
 export type WeatherSnapshot = {
   date: string
   locationLabel: string
@@ -86,6 +156,10 @@ export type WeatherSnapshot = {
   humidityAverage: number
   precipitationSum: number
   precipitationProbabilityMax?: number
+
+  // 00-02부터 22-24까지 2시간 단위 12구간.
+  periods2h: WeatherPeriodSummary[]
+
   fetchedAt: string
 }
 

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import Card from '../components/Card'
 import WeatherContextCard from '../components/WeatherContextCard'
+import PhotoImage from '../components/PhotoImage'
 import {
   diffDays,
   formatKoreanDate,
@@ -20,20 +21,24 @@ import {
   latestWeightLog,
 } from '../lib/weight'
 import { feedingAmountText } from '../lib/feedingAmount'
-import type { AppSettings, FeedingLog, WeightLog } from '../types'
+import type { AppSettings, FeedingLog, PhotoMeta, WeightLog } from '../types'
 
 type Props = {
   settings: AppSettings
   feedingLogs: FeedingLog[]
   weightLogs: WeightLog[]
+  photos: PhotoMeta[]
   onQuickRecord: () => void
+  onOpenAlbum: () => void
 }
 
 export default function TodayPage({
   settings,
   feedingLogs,
   weightLogs,
+  photos,
   onQuickRecord,
+  onOpenAlbum,
 }: Props) {
   const geckoRef = useRef<HTMLButtonElement>(null)
   const [geckoPosition, setGeckoPosition] = useState<{ x: number; y: number } | null>(null)
@@ -163,6 +168,14 @@ export default function TodayPage({
   )
   const nextWeight = getNextWeightScheduledDate(todayIso, settings)
 
+  const todayPhotos = photos
+    .filter((photo) => photo.date === todayIso)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+
+  const todayPhoto =
+    todayPhotos.find((photo) => photo.isCover) ??
+    todayPhotos[0]
+
   return (
     <main className="page">
       <header className="hero">
@@ -223,10 +236,36 @@ export default function TodayPage({
       />
 
       <Card className="photo-card">
-        <div className="photo-placeholder">
-          <span>오늘의 에리</span>
-          <small>사진 기능은 R2 연동 단계에서 활성화</small>
-        </div>
+        {todayPhoto ? (
+          <button
+            type="button"
+            className="today-photo-button"
+            onClick={onOpenAlbum}
+            aria-label="오늘의 에리 사진을 앨범에서 보기"
+          >
+            <PhotoImage
+              photo={todayPhoto}
+              className="today-photo-image"
+              alt={todayPhoto.caption || '오늘의 에리'}
+            />
+            <span className="today-photo-overlay">
+              <strong>오늘의 에리</strong>
+              <small>
+                {todayPhotos.length}장
+                {todayPhoto.caption ? ` · ${todayPhoto.caption}` : ''}
+              </small>
+            </span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="photo-placeholder photo-placeholder-button"
+            onClick={onOpenAlbum}
+          >
+            <span>오늘의 에리</span>
+            <small>사진을 추가하면 여기에 대표 사진이 보여요.</small>
+          </button>
+        )}
       </Card>
 
       <div className="grid-two">

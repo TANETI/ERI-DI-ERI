@@ -1,3 +1,36 @@
+const KOREA_TIME_ZONE = 'Asia/Seoul'
+
+function koreaDateTimeParts(date: Date) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: KOREA_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+
+  const pick = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? ''
+
+  return {
+    year: pick('year'),
+    month: pick('month'),
+    day: pick('day'),
+    hour: Number(pick('hour')),
+  }
+}
+
+export function todayISO(date = new Date()): string {
+  const { year, month, day } = koreaDateTimeParts(date)
+  return `${year}-${month}-${day}`
+}
+
+export function currentKoreaHour(date = new Date()): number {
+  return koreaDateTimeParts(date).hour
+}
+
+
 export function toISODate(date: Date): string {
   const y = date.getFullYear()
   const m = String(date.getMonth() + 1).padStart(2, '0')

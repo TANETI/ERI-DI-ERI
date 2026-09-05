@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import Card from '../components/Card'
+import { feedingAmountLabels } from '../lib/feedingAmount'
 import RecordManager from '../components/RecordManager'
-import { toISODate } from '../lib/date'
+import { todayISO } from '../lib/date'
 import type {
   AppSettings,
   DefecationLog,
@@ -51,15 +52,6 @@ type Props = {
   onUpdateDefecation: (log: DefecationLog) => void
   onDeleteDefecation: (id: string) => void
 }
-
-const amountLabels = [
-  '안 먹음',
-  '맛만 봄',
-  '소량',
-  '보통',
-  '많이',
-  '거의 다 먹음',
-]
 
 const activityPresets = [
   '평소와 비슷',
@@ -117,7 +109,7 @@ export default function RecordPage({
   onUpdateDefecation,
   onDeleteDefecation,
 }: Props) {
-  const today = toISODate(new Date())
+  const today = todayISO()
   const [date, setDate] = useState(initialDate ?? today)
   const [openSection, setOpenSection] = useState<DetailSection>(null)
 
@@ -480,7 +472,7 @@ export default function RecordPage({
                   미기록
                 </button>
 
-                {amountLabels.map((label, index) => (
+                {feedingAmountLabels.map((label, index) => (
                   <button
                     type="button"
                     key={label}
