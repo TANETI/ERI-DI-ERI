@@ -62,20 +62,113 @@ export function jsonResponse(
   )
 }
 
-export function assertAuthorized(
+function cookieValue(
   request: Request,
-  env: Env,
+  name: string,
 ) {
-  const expected =
-    env.API_TOKEN?.trim()
+  const cookie =
+    request.headers.get('Cookie') ?? ''
 
-  if (!expected) {
-    throw new HttpError(
-      503,
-      'api_token_not_configured',
-      'API_TOKEN secret is not configured.',
+  for (const part of cookie.split(';')) {
+    const trimmed = part.trim()
+    const separator =
+      trimmed.indexOf('=')
+
+    if (separator < 0) continue
+
+    const key =
+      trimmed.slice(0, separator)
+
+    if (key !== name) continue
+
+    return trimmed.slice(
+      separator + 1,
     )
   }
+
+  return ''
+}
+
+async function hasValidAccessSession(
+  request: Request,
+  env: Env,
+  ctx?: ExecutionContext,
+) {
+  // Direct Worker invocation:
+  // Worker-level Access provides a verified ctx.access.
+  if (ctx?.access) {
+    return true
+  }
+
+  // Workers Static Assets are served through an internal router.
+  // Access still authenticates the request, but that router does
+  // not forward ctx.access to the user Worker. Verify the Access
+  // application token through the team get-identity endpoint.
+  const teamDomain =
+    env.TEAM_DOMAIN?.trim()
+      .replace(/\/+$/, '')
+
+  if (!teamDomain) {
+    return false
+  }
+
+  const cookieToken =
+    cookieValue(
+      request,
+      'CF_Authorization',
+    )
+
+  const assertionToken =
+    request.headers.get(
+      'Cf-Access-Jwt-Assertion',
+    )?.trim() ?? ''
+
+  const accessToken =
+    cookieToken ||
+    assertionToken
+
+  if (!accessToken) {
+    return false
+  }
+
+  try {
+    const response =
+      await fetch(
+        `${teamDomain}/cdn-cgi/access/get-identity`,
+        {
+          method: 'GET',
+          headers: {
+            Cookie:
+              `CF_Authorization=${accessToken}`,
+          },
+          redirect: 'manual',
+        },
+      )
+
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+export async function assertAuthorized(
+  request: Request,
+  env: Env,
+  ctx?: ExecutionContext,
+) {
+  if (
+    await hasValidAccessSession(
+      request,
+      env,
+      ctx,
+    )
+  ) {
+    return
+  }
+
+  // Development / emergency fallback.
+  const expected =
+    env.API_TOKEN?.trim()
 
   const header =
     request.headers.get('Authorization')
@@ -85,13 +178,18 @@ export function assertAuthorized(
       ? header.slice(7)
       : ''
 
-  if (token !== expected) {
-    throw new HttpError(
-      401,
-      'unauthorized',
-      'Invalid API token.',
-    )
+  if (
+    expected &&
+    token === expected
+  ) {
+    return
   }
+
+  throw new HttpError(
+    401,
+    'unauthorized',
+    'Cloudflare Access or a valid development token is required.',
+  )
 }
 
 export async function readJson<T>(

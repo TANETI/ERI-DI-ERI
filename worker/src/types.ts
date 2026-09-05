@@ -19,6 +19,7 @@ export type Env = {
   PHOTOS: R2Bucket
   API_TOKEN?: string
   ALLOWED_ORIGIN?: string
+  TEAM_DOMAIN?: string
 }
 
 export type SettingsRow = {

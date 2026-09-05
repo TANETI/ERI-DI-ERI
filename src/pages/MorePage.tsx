@@ -886,12 +886,12 @@ export default function MorePage({
           <Card title="클라우드 데이터 실험실" icon="☁️">
             <div className="cloud-lab-head">
               <div>
-                <span>Phase 5.3</span>
+                <span>Phase 5.4</span>
                 <strong>
-                  D1 기록 + R2 사진 저장
+                  D1 + R2 + Access
                 </strong>
                 <small>
-                  먼저 로컬 사진을 R2로 복사한 뒤 사진 저장소를 안전하게 전환할 수 있어요.
+                  실제 도메인에서는 Cloudflare Access 로그인 뒤 같은 주소의 API를 사용해요.
                 </small>
               </div>
 
@@ -923,13 +923,13 @@ export default function MorePage({
                 <span>
                   개발용 API 토큰
                   <small>
-                    · 현재 브라우저 탭 세션에만 보관
+                    · localhost / 비상 테스트 전용
                   </small>
                 </span>
                 <input
                   type="password"
                   value={cloudTokenDraft}
-                  placeholder="로컬 테스트에서만 사용"
+                  placeholder="Access 배포 후에는 비워도 됨"
                   autoComplete="off"
                   onChange={(event) =>
                     setCloudTokenDraft(
@@ -1091,10 +1091,10 @@ export default function MorePage({
             <div className="cloud-lab-warning">
               <strong>개발 단계 인증</strong>
               <p>
-                로컬 D1/R2 테스트에서는 Worker의 API_TOKEN을 현재 탭의
-                sessionStorage에만 넣어 사용합니다. 실제 배포에서는
-                브라우저 번들에 토큰을 넣지 않고 Cloudflare Access
-                인증으로 교체할 예정입니다.
+                localhost 테스트에서는 API_TOKEN을 현재 탭의
+                sessionStorage에만 넣어 사용할 수 있습니다.
+                실제 eri.issssm.com에서는 Cloudflare Access가 인증을 처리하므로
+                브라우저에 API 토큰을 넣지 않습니다.
               </p>
             </div>
           </Card>

@@ -39,7 +39,7 @@ import type {
 } from './types'
 
 const API_VERSION = 'v1'
-const SERVICE_VERSION = '5.3'
+const SERVICE_VERSION = '5.4.1'
 
 function routeKey(
   request: Request,
@@ -193,6 +193,7 @@ async function uploadPhoto(
 async function handleRequest(
   request: Request,
   env: Env,
+  ctx?: ExecutionContext,
 ): Promise<Response> {
   const url = new URL(request.url)
 
@@ -247,7 +248,11 @@ async function handleRequest(
     )
   }
 
-  assertAuthorized(request, env)
+  await assertAuthorized(
+    request,
+    env,
+    ctx,
+  )
 
   if (
     request.method === 'POST' &&
@@ -601,11 +606,13 @@ export default {
   async fetch(
     request: Request,
     env: Env,
+    ctx: ExecutionContext,
   ): Promise<Response> {
     try {
       return await handleRequest(
         request,
         env,
+        ctx,
       )
     } catch (error) {
       if (error instanceof HttpError) {

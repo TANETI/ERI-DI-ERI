@@ -21,6 +21,27 @@ const PHOTO_MODE_KEY =
 const DEFAULT_API_BASE =
   'http://localhost:8787'
 
+const PRODUCTION_HOST =
+  'eri.issssm.com'
+
+function isProductionHost() {
+  return (
+    hasWindow() &&
+    window.location.hostname ===
+      PRODUCTION_HOST
+  )
+}
+
+function defaultApiBase() {
+  if (!hasWindow()) {
+    return DEFAULT_API_BASE
+  }
+
+  return isProductionHost()
+    ? window.location.origin
+    : DEFAULT_API_BASE
+}
+
 function hasWindow() {
   return typeof window !== 'undefined'
 }
@@ -29,8 +50,18 @@ export function getRepositoryMode():
 RepositoryMode {
   if (!hasWindow()) return 'local'
 
-  return localStorage.getItem(MODE_KEY) ===
-    'cloud'
+  const saved =
+    localStorage.getItem(MODE_KEY)
+
+  if (saved === 'cloud') {
+    return 'cloud'
+  }
+
+  if (saved === 'local') {
+    return 'local'
+  }
+
+  return isProductionHost()
     ? 'cloud'
     : 'local'
 }
@@ -49,7 +80,7 @@ export function getCloudApiBase() {
 
   return (
     localStorage.getItem(API_BASE_KEY) ??
-    DEFAULT_API_BASE
+    defaultApiBase()
   )
 }
 
@@ -117,9 +148,20 @@ export function getCloudPhotoMode():
 CloudPhotoMode {
   if (!hasWindow()) return 'local'
 
-  return localStorage.getItem(
-    PHOTO_MODE_KEY,
-  ) === 'r2'
+  const saved =
+    localStorage.getItem(
+      PHOTO_MODE_KEY,
+    )
+
+  if (saved === 'r2') {
+    return 'r2'
+  }
+
+  if (saved === 'local') {
+    return 'local'
+  }
+
+  return isProductionHost()
     ? 'r2'
     : 'local'
 }

@@ -59,3 +59,19 @@ interface R2Bucket {
   head(key: string): Promise<R2Object | null>
   delete(key: string): Promise<void>
 }
+
+
+interface CloudflareAccessIdentity {
+  email?: string
+  name?: string
+  [key: string]: unknown
+}
+
+interface CloudflareAccessContext {
+  aud?: string
+  getIdentity(): Promise<CloudflareAccessIdentity | null>
+}
+
+interface ExecutionContext {
+  access?: CloudflareAccessContext
+}
