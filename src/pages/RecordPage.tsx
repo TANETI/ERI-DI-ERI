@@ -3,7 +3,6 @@ import Card from '../components/Card'
 import { toISODate } from '../lib/date'
 import type {
   DefecationLog,
-  EnvironmentLog,
   FeedingAmount,
   FeedingLog,
   PresetSelection,
@@ -17,7 +16,6 @@ type Props = {
   onAddWeight: (log: WeightLog) => void
   onAddTmi: (log: TmiLog) => void
   onAddPreset: (log: PresetSelection) => void
-  onAddEnvironment: (log: EnvironmentLog) => void
   onAddDefecation: (log: DefecationLog) => void
 }
 
@@ -32,7 +30,6 @@ export default function RecordPage({
   onAddWeight,
   onAddTmi,
   onAddPreset,
-  onAddEnvironment,
   onAddDefecation,
 }: Props) {
   const today = toISODate(new Date())
@@ -41,8 +38,6 @@ export default function RecordPage({
   const [time, setTime] = useState('21:00')
   const [amount, setAmount] = useState<FeedingAmount>(3)
   const [weight, setWeight] = useState('')
-  const [temperature, setTemperature] = useState('')
-  const [humidity, setHumidity] = useState('')
   const [tmi, setTmi] = useState('')
   const [saved, setSaved] = useState('')
 
@@ -72,23 +67,6 @@ export default function RecordPage({
     onAddWeight({ id: crypto.randomUUID(), date, weight: parsed })
     setWeight('')
     flash('체중 기록을 저장했어요.')
-  }
-
-  const saveEnvironment = () => {
-    const t = temperature.trim() ? Number(temperature) : undefined
-    const h = humidity.trim() ? Number(humidity) : undefined
-    if (t === undefined && h === undefined) return flash('온도나 습도 중 하나는 입력해 주세요.')
-    if (t !== undefined && !Number.isFinite(t)) return flash('온도 값을 확인해 주세요.')
-    if (h !== undefined && (!Number.isFinite(h) || h < 0 || h > 100)) return flash('습도 값을 확인해 주세요.')
-    onAddEnvironment({
-      id: crypto.randomUUID(),
-      date,
-      temperature: t,
-      humidity: h,
-    })
-    setTemperature('')
-    setHumidity('')
-    flash('온습도 기록을 저장했어요.')
   }
 
   const saveTmi = () => {
@@ -168,19 +146,6 @@ export default function RecordPage({
         </div>
       </Card>
 
-      <Card title="온도 · 습도" icon="🌡">
-        <div className="form-grid">
-          <label className="field">
-            <span>온도 (℃)</span>
-            <input inputMode="decimal" value={temperature} onChange={(e) => setTemperature(e.target.value)} placeholder="예: 25.1" />
-          </label>
-          <label className="field">
-            <span>습도 (%)</span>
-            <input inputMode="numeric" value={humidity} onChange={(e) => setHumidity(e.target.value)} placeholder="예: 67" />
-          </label>
-        </div>
-        <button className="secondary-action" onClick={saveEnvironment}>온습도 저장</button>
-      </Card>
 
       <Card title="배변" icon="●">
         <div className="chip-wrap">

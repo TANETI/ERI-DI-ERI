@@ -30,6 +30,7 @@ export type PresetSelection = {
   label: string
 }
 
+/** @deprecated Phase 2.2부터 UI/보고서에서는 사용하지 않는 과거 데이터 형식 */
 export type EnvironmentLog = {
   id: string
   date: string
@@ -46,13 +47,50 @@ export type DefecationLog = {
   memo?: string
 }
 
+export type WeatherLocation = {
+  label: string
+  latitude: number
+  longitude: number
+}
+
+export type WeatherSnapshot = {
+  date: string
+  locationLabel: string
+  latitude: number
+  longitude: number
+  source: 'forecast' | 'archive'
+  temperatureMin: number
+  temperatureMax: number
+  humidityMin: number
+  humidityMax: number
+  humidityAverage: number
+  precipitationSum: number
+  precipitationProbabilityMax?: number
+  fetchedAt: string
+}
+
+export type WeatherAdvice = {
+  id: string
+  icon: string
+  title: string
+  message: string
+  level: 'info' | 'check' | 'attention'
+}
+
 export type AppSettings = {
   adoptionDate: string
   feedingStartDate: string
   feedingIntervalDays: number
   feedingTime: string
   feedingGraceUntilHour: number
+
   weightStartDate?: string
   weightIntervalDays: number
+
   fontPreset: FontPreset
+
+  weatherLocationLabel?: string
+  weatherLatitude?: number
+  weatherLongitude?: number
+  weatherAlertsEnabled: boolean
 }

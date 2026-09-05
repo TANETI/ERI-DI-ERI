@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react'
 import Card from '../components/Card'
 import { buildReport } from '../lib/report'
+import { searchWeatherLocations } from '../lib/weather'
 import { toISODate } from '../lib/date'
 import type {
   AppSettings,
   DefecationLog,
-  EnvironmentLog,
   FeedingLog,
   FontPreset,
   PresetSelection,
   TmiLog,
   WeightLog,
+  WeatherLocation,
 } from '../types'
 
 type Mode = 'report' | 'settings'
@@ -21,7 +22,6 @@ type Props = {
   weightLogs: WeightLog[]
   tmiLogs: TmiLog[]
   presetSelections: PresetSelection[]
-  environmentLogs: EnvironmentLog[]
   defecationLogs: DefecationLog[]
   onSave: (settings: AppSettings) => void
 }
@@ -40,7 +40,6 @@ export default function MorePage({
   weightLogs,
   tmiLogs,
   presetSelections,
-  environmentLogs,
   defecationLogs,
   onSave,
 }: Props) {
@@ -51,6 +50,9 @@ export default function MorePage({
   const [reportStart, setReportStart] = useState(settings.adoptionDate)
   const [reportEnd, setReportEnd] = useState(today)
   const [message, setMessage] = useState('')
+  const [locationQuery, setLocationQuery] = useState(settings.weatherLocationLabel ?? '')
+  const [locationResults, setLocationResults] = useState<WeatherLocation[]>([])
+  const [locationSearching, setLocationSearching] = useState(false)
 
   const report = useMemo(() => {
     try {
@@ -60,8 +62,7 @@ export default function MorePage({
         weightLogs,
         tmiLogs,
         presetSelections,
-        environmentLogs,
-        defecationLogs,
+              defecationLogs,
       })
     } catch {
       return null
@@ -74,8 +75,7 @@ export default function MorePage({
     weightLogs,
     tmiLogs,
     presetSelections,
-    environmentLogs,
-    defecationLogs,
+      defecationLogs,
   ])
 
   const flash = (text: string) => {
@@ -111,6 +111,35 @@ export default function MorePage({
     anchor.click()
     URL.revokeObjectURL(url)
     flash('JSON 보고서를 저장했어요.')
+  }
+
+  const searchLocation = async () => {
+    if (!locationQuery.trim()) {
+      flash('지역 이름을 입력해 주세요.')
+      return
+    }
+
+    setLocationSearching(true)
+    try {
+      const results = await searchWeatherLocations(locationQuery)
+      setLocationResults(results)
+      if (!results.length) flash('검색 결과가 없어요.')
+    } catch {
+      flash('지역 검색에 실패했어요.')
+    } finally {
+      setLocationSearching(false)
+    }
+  }
+
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+      flash('이 브라우저는 알림을 지원하지 않아요.')
+      return
+    }
+
+    const permission = await Notification.requestPermission()
+    if (permission === 'granted') flash('브라우저 알림을 허용했어요.')
+    else flash('알림 권한이 허용되지 않았어요.')
   }
 
   const setRecentDays = (days: number) => {
@@ -311,6 +340,106 @@ export default function MorePage({
 
             <p className="setting-help">
               예: 8/31 급여 회차를 9/1 새벽 2시에 급여해도, 마감이 06시라면 8/31 회차 완료로 기록됩니다.
+            </p>
+          </Card>
+
+
+          <Card title="지역 날씨" icon="☁️">
+            <p className="setting-help weather-setting-intro">
+              직접 온습도를 매번 입력하는 대신, 우리 집 지역의 기온·습도·비 예보를 가져와 관리 체크 알림에 사용합니다.
+            </p>
+
+            <div className="weather-location-search">
+              <label className="field">
+                <span>우리 집 지역</span>
+                <input
+                  value={locationQuery}
+                  onChange={(e) => setLocationQuery(e.target.value)}
+                  placeholder="예: 인천, 부평, 서울"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      searchLocation()
+                    }
+                  }}
+                />
+              </label>
+
+              <button
+                type="button"
+                className="secondary-action"
+                onClick={searchLocation}
+                disabled={locationSearching}
+              >
+                {locationSearching ? '검색 중…' : '지역 검색'}
+              </button>
+            </div>
+
+            {locationResults.length > 0 && (
+              <div className="weather-location-results">
+                {locationResults.map((location) => (
+                  <button
+                    type="button"
+                    key={`${location.latitude}-${location.longitude}-${location.label}`}
+                    onClick={() => {
+                      setDraft({
+                        ...draft,
+                        weatherLocationLabel: location.label,
+                        weatherLatitude: location.latitude,
+                        weatherLongitude: location.longitude,
+                      })
+                      setLocationQuery(location.label)
+                      setLocationResults([])
+                    }}
+                  >
+                    <strong>{location.label}</strong>
+                    <small>{location.latitude.toFixed(3)}, {location.longitude.toFixed(3)}</small>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {typeof draft.weatherLatitude === 'number' &&
+              typeof draft.weatherLongitude === 'number' && (
+                <div className="selected-weather-location">
+                  <span>현재 선택</span>
+                  <strong>{draft.weatherLocationLabel ?? '설정한 지역'}</strong>
+                </div>
+              )}
+
+            <label className="toggle-row">
+              <span>
+                <strong>날씨 기반 관리 알림</strong>
+                <small>더운 날 냉방 확인, 매우 습한 날 분무량 확인 같은 안내</small>
+              </span>
+              <input
+                type="checkbox"
+                checked={draft.weatherAlertsEnabled}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    weatherAlertsEnabled: e.target.checked,
+                  })
+                }
+              />
+            </label>
+
+            <div className="weather-notification-row">
+              <button
+                type="button"
+                className="secondary-action"
+                onClick={requestNotificationPermission}
+              >
+                브라우저 알림 허용
+              </button>
+              <span>
+                현재 로컬 단계에서는 앱을 열었을 때 알림을 띄웁니다.
+                완전한 아침 자동 알림은 Cloudflare Worker + Web Push 단계에서 연결합니다.
+              </span>
+            </div>
+
+            <p className="setting-help">
+              실외 날씨는 사육장 내부와 같지 않으므로 ‘자동 처방’이 아니라 관리 여부를 확인하라는 신호로만 사용합니다.
             </p>
           </Card>
 

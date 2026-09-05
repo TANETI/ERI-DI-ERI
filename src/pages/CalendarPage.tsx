@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import Card from '../components/Card'
+import WeatherContextCard from '../components/WeatherContextCard'
 import {
   addDays,
   diffDays,
@@ -16,7 +17,6 @@ import { isWeightScheduledDay } from '../lib/weight'
 import type {
   AppSettings,
   DefecationLog,
-  EnvironmentLog,
   FeedingLog,
   PresetSelection,
   TmiLog,
@@ -31,7 +31,6 @@ type Props = {
   weightLogs: WeightLog[]
   tmiLogs: TmiLog[]
   presetSelections: PresetSelection[]
-  environmentLogs: EnvironmentLog[]
   defecationLogs: DefecationLog[]
   onAddRecord: (date: string) => void
 }
@@ -78,7 +77,6 @@ export default function CalendarPage({
   weightLogs,
   tmiLogs,
   presetSelections,
-  environmentLogs,
   defecationLogs,
   onAddRecord,
 }: Props) {
@@ -166,7 +164,6 @@ export default function CalendarPage({
           weightLogs={weightLogs}
           tmiLogs={tmiLogs}
           presetSelections={presetSelections}
-          environmentLogs={environmentLogs}
           defecationLogs={defecationLogs}
           weekStrip={weekStrip}
           onSelectDate={selectDate}
@@ -183,7 +180,6 @@ export default function CalendarPage({
           feedingLogs={feedingLogs}
           weightLogs={weightLogs}
           tmiLogs={tmiLogs}
-          environmentLogs={environmentLogs}
           defecationLogs={defecationLogs}
           cells={monthCells}
           onMoveMonth={(delta) => {
@@ -207,7 +203,6 @@ function DailyView({
   weightLogs,
   tmiLogs,
   presetSelections,
-  environmentLogs,
   defecationLogs,
   weekStrip,
   onSelectDate,
@@ -223,7 +218,6 @@ function DailyView({
   weightLogs: WeightLog[]
   tmiLogs: TmiLog[]
   presetSelections: PresetSelection[]
-  environmentLogs: EnvironmentLog[]
   defecationLogs: DefecationLog[]
   weekStrip: string[]
   onSelectDate: (iso: string) => void
@@ -236,7 +230,6 @@ function DailyView({
   const weights = weightLogs.filter((x) => x.date === date)
   const tmis = tmiLogs.filter((x) => x.date === date)
   const presets = presetSelections.filter((x) => x.date === date)
-  const environments = environmentLogs.filter((x) => x.date === date)
   const poops = defecationLogs.filter((x) => x.date === date)
 
   const scheduled = isScheduledDay(date, settings.feedingStartDate, settings.feedingIntervalDays)
@@ -250,12 +243,6 @@ function DailyView({
   const weightScheduled = isWeightScheduledDay(date, settings)
   const weightDone = weights.length > 0
 
-  const tempValues = environments
-    .map((x) => x.temperature)
-    .filter((value): value is number => value !== undefined)
-  const humidityValues = environments
-    .map((x) => x.humidity)
-    .filter((value): value is number => value !== undefined)
 
   return (
     <>
@@ -369,16 +356,6 @@ function DailyView({
               title="배변"
               value={poops.length ? `${poops.length}회` : '기록 없음'}
             />
-            <DailyStat
-              icon="🌡"
-              title="온도"
-              value={formatRange(tempValues, '℃')}
-            />
-            <DailyStat
-              icon="💧"
-              title="습도"
-              value={formatRange(humidityValues, '%')}
-            />
           </div>
 
           {presets.length > 0 && (
@@ -415,6 +392,8 @@ function DailyView({
             </>
           )}
         </Card>
+
+        <WeatherContextCard date={date} settings={settings} compact />
 
         <button className="primary-action" onClick={() => onAddRecord(date)}>
           + 이 날짜에 기록 추가
@@ -460,7 +439,6 @@ function MonthlyView({
   feedingLogs,
   weightLogs,
   tmiLogs,
-  environmentLogs,
   defecationLogs,
   cells,
   onMoveMonth,
@@ -472,7 +450,6 @@ function MonthlyView({
   feedingLogs: FeedingLog[]
   weightLogs: WeightLog[]
   tmiLogs: TmiLog[]
-  environmentLogs: EnvironmentLog[]
   defecationLogs: DefecationLog[]
   cells: Array<Date | null>
   onMoveMonth: (delta: number) => void
@@ -500,7 +477,6 @@ function MonthlyView({
           const weightScheduled = isWeightScheduledDay(iso, settings)
           const hasWeight = weightLogs.some((x) => x.date === iso)
           const hasPoop = defecationLogs.some((x) => x.date === iso)
-          const hasEnv = environmentLogs.some((x) => x.date === iso)
           const hasTmi = tmiLogs.some((x) => x.date === iso)
           const isToday = iso === todayIso
 
@@ -524,7 +500,6 @@ function MonthlyView({
                   </span>
                 )}
                 {hasPoop && <span title="배변">💩</span>}
-                {hasEnv && <span title="환경">🌡</span>}
                 {hasTmi && <span title="TMI">💬</span>}
               </span>
             </button>

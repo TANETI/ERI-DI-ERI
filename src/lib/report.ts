@@ -3,7 +3,6 @@ import { getMatchedFeedingLog } from './feeding'
 import type {
   AppSettings,
   DefecationLog,
-  EnvironmentLog,
   FeedingLog,
   PresetSelection,
   TmiLog,
@@ -16,7 +15,6 @@ export type ReportSource = {
   weightLogs: WeightLog[]
   tmiLogs: TmiLog[]
   presetSelections: PresetSelection[]
-  environmentLogs: EnvironmentLog[]
   defecationLogs: DefecationLog[]
 }
 
@@ -76,7 +74,7 @@ function formatFeeding(log: FeedingLog) {
 function reportInstruction() {
   return `아래 자료는 크레스티드 게코 ‘에리’의 사육 관찰 기록이다.
 
-제공된 기록에 근거하여 급여 주기, 실제 섭취량, 체중 변화, 배변, 행동 및 사육환경의 장기 추세를 평가하라.
+제공된 기록에 근거하여 급여 주기, 실제 섭취량, 체중 변화, 배변, 행동 및 지역 날씨에 따른 관리상의 참고점을 평가하라.
 
 개별 날짜의 특이행동이나 단일 측정치를 과도하게 해석하지 말고 전체 기간의 패턴을 우선하라.
 
@@ -133,12 +131,11 @@ function answerTemplate() {
 급여와의 관련성:
 특이사항:
 
-## F. 환경
-온도:
-습도:
-측정 빈도:
-장기간 경향:
-조정 필요 여부:
+## F. 날씨·계절 관리 참고
+지역 날씨가 관리에 미칠 수 있는 영향:
+냉방/환기 확인 필요 여부:
+분무량 조정 확인 필요 여부:
+주의: 지역 실외 날씨를 사육장 내부 실측값으로 간주하지 말 것.
 
 ## G. 행동 및 TMI
 반복적으로 나타난 행동:
@@ -156,7 +153,7 @@ function answerTemplate() {
 ## I. 다음 기간 관리 계획
 급여:
 체중 측정:
-환경:
+날씨에 따른 관리 확인:
 추가로 관찰하면 좋은 항목:
 다음 평가 권장 시점:`
 }
@@ -172,7 +169,6 @@ export function buildReport(
     weightLogs,
     tmiLogs,
     presetSelections,
-    environmentLogs,
     defecationLogs,
   } = source
 
@@ -221,18 +217,6 @@ export function buildReport(
     if (days > 0) weeklyWeightChange = (weightDelta! / days) * 7
   }
 
-  const environments = environmentLogs.filter((log) =>
-    inRange(log.date, startDate, endDate),
-  )
-  const temperatures = environments
-    .map((log) => log.temperature)
-    .filter((value): value is number => value !== undefined)
-  const humidities = environments
-    .map((log) => log.humidity)
-    .filter((value): value is number => value !== undefined)
-
-  const tempRange = minMax(temperatures)
-  const humidityRange = minMax(humidities)
 
   const poops = defecationLogs.filter((log) =>
     inRange(log.date, startDate, endDate),
@@ -248,7 +232,6 @@ export function buildReport(
     .filter((log) => inRange(log.date, startDate, endDate))
     .sort((a, b) => a.date.localeCompare(b.date))
 
-  const observedEnvDays = new Set(environments.map((log) => log.date)).size
   const totalDays = rangeDates.length
 
   const lines: string[] = []
@@ -331,28 +314,10 @@ export function buildReport(
     })
 
   lines.push('')
-  lines.push('## 4. 환경')
+  lines.push('## 4. 지역 날씨 기반 관리 참고')
   lines.push('')
-  lines.push(`- 환경 기록: ${environments.length}건 / ${observedEnvDays}일`)
-  if (temperatures.length) {
-    lines.push(
-      `- 온도: 평균 ${fixed(avg(temperatures)!, 1)}℃ / 범위 ${tempRange!.min}~${tempRange!.max}℃`,
-    )
-  } else {
-    lines.push('- 온도: 기록 없음')
-  }
-  if (humidities.length) {
-    lines.push(
-      `- 습도: 평균 ${fixed(avg(humidities)!, 1)}% / 범위 ${humidityRange!.min}~${humidityRange!.max}%`,
-    )
-  } else {
-    lines.push('- 습도: 기록 없음')
-  }
-  if (observedEnvDays < Math.max(1, Math.ceil(totalDays * 0.5))) {
-    lines.push(
-      `- 자료 제한: 환경 기록이 ${totalDays}일 중 ${observedEnvDays}일만 있어 전체 기간의 일중 환경 변화를 대표하지 않을 수 있음.`,
-    )
-  }
+  lines.push('- 수동 사육장 온·습도 기록은 사용하지 않음.')
+  lines.push('- 지역 실외 날씨는 냉방·분무 여부를 한 번 더 확인하도록 돕는 보조 신호이며, 사육장 내부 환경을 직접 측정한 값으로 간주하지 않음.')
 
   lines.push('')
   lines.push('## 5. 행동 프리셋')
@@ -380,7 +345,6 @@ export function buildReport(
     const feeds = feedLogsInRange.filter((log) => log.date === date)
     const dayWeights = weights.filter((log) => log.date === date)
     const dayPoops = poops.filter((log) => log.date === date)
-    const dayEnv = environments.filter((log) => log.date === date)
     const dayPresets = presets.filter((log) => log.date === date)
     const dayTmis = tmis.filter((log) => log.date === date)
     const scheduled = isScheduledDay(date, settings.feedingStartDate, settings.feedingIntervalDays)
@@ -389,7 +353,6 @@ export function buildReport(
       feeds.length ||
       dayWeights.length ||
       dayPoops.length ||
-      dayEnv.length ||
       dayPresets.length ||
       dayTmis.length ||
       scheduled
@@ -410,13 +373,6 @@ export function buildReport(
     feeds.forEach((log) => lines.push(`- 실제 급여: ${formatFeeding(log)}`))
     dayWeights.forEach((log) => lines.push(`- 체중: ${log.weight} g${log.memo ? ` · ${log.memo}` : ''}`))
     dayPoops.forEach((log) => lines.push(`- 배변: ${log.status ?? '미분류'}${log.memo ? ` · ${log.memo}` : ''}`))
-    dayEnv.forEach((log) => {
-      lines.push(
-        `- 환경: ${log.temperature !== undefined ? `${log.temperature}℃` : '온도 미기록'} / ${
-          log.humidity !== undefined ? `${log.humidity}%` : '습도 미기록'
-        }${log.memo ? ` · ${log.memo}` : ''}`,
-      )
-    })
     if (dayPresets.length) {
       lines.push(`- 관찰 프리셋: ${dayPresets.map((log) => log.label).join(', ')}`)
     }
@@ -456,14 +412,12 @@ ${template}`
       actualFeedingLogCount: feedLogsInRange.length,
       weightLogCount: weights.length,
       defecationLogCount: poops.length,
-      environmentLogCount: environments.length,
       tmiCount: tmis.length,
       presetCount: presets.length,
     },
     feedingLogs: feedLogsInRange,
     weightLogs: weights,
     defecationLogs: poops,
-    environmentLogs: environments,
     presetSelections: presets,
     tmiLogs: tmis,
   }

@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import Card from '../components/Card'
+import WeatherContextCard from '../components/WeatherContextCard'
 import {
   addDays,
   diffDays,
@@ -44,6 +46,24 @@ export default function TodayPage({
   weightLogs,
   onQuickRecord,
 }: Props) {
+  const [geckoPosition, setGeckoPosition] = useState<{ x: number; y: number } | null>(null)
+  const [geckoPopped, setGeckoPopped] = useState(false)
+
+  const teleportGecko = () => {
+    const size = 62
+    const padding = 18
+    const maxX = Math.max(padding, window.innerWidth - size - padding)
+    const maxY = Math.max(padding, window.innerHeight - size - 110)
+
+    setGeckoPosition({
+      x: Math.round(padding + Math.random() * Math.max(0, maxX - padding)),
+      y: Math.round(padding + Math.random() * Math.max(0, maxY - padding)),
+    })
+
+    setGeckoPopped(true)
+    window.setTimeout(() => setGeckoPopped(false), 420)
+  }
+
   const today = new Date()
   const todayIso = toISODate(today)
   const dayTogether = diffDays(settings.adoptionDate, todayIso) + 1
@@ -76,7 +96,21 @@ export default function TodayPage({
           <h1>ERI DI-ERY</h1>
           <p className="subtle">에리와 함께한 지 <strong>{dayTogether}일째</strong></p>
         </div>
-        <div className="gecko-badge" aria-hidden="true">🦎</div>
+        <button
+          type="button"
+          className={`gecko-badge gecko-easter-egg ${geckoPosition ? 'escaped' : ''} ${geckoPopped ? 'popped' : ''}`}
+          onClick={teleportGecko}
+          aria-label="도망가는 에리 잡기"
+          title="에리?"
+          style={
+            geckoPosition
+              ? { left: `${geckoPosition.x}px`, top: `${geckoPosition.y}px` }
+              : undefined
+          }
+        >
+          🦎
+          {geckoPopped && <span className="gecko-pop" aria-hidden="true">쀽!</span>}
+        </button>
       </header>
 
       <Card className="photo-card">
@@ -149,6 +183,8 @@ export default function TodayPage({
           )}
         </Card>
       </div>
+
+      <WeatherContextCard date={todayIso} settings={settings} />
 
       <button className="primary-action" onClick={onQuickRecord}>
         + 오늘 기록하기

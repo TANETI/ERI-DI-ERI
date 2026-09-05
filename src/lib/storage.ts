@@ -36,6 +36,7 @@ export const defaultSettings: AppSettings = {
   feedingGraceUntilHour: 6,
   weightIntervalDays: 7,
   fontPreset: 'system',
+  weatherAlertsEnabled: true,
 }
 
 function load<T>(key: string, fallback: T): T {
@@ -62,6 +63,7 @@ function normalizeSettings(value: Partial<AppSettings>): AppSettings {
     ),
     weightIntervalDays: Math.max(1, Number(value.weightIntervalDays ?? defaultSettings.weightIntervalDays)),
     fontPreset: value.fontPreset ?? defaultSettings.fontPreset,
+    weatherAlertsEnabled: value.weatherAlertsEnabled ?? defaultSettings.weatherAlertsEnabled,
   }
 }
 

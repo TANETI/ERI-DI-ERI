@@ -10,7 +10,6 @@ import { toISODate } from './lib/date'
 import type {
   AppSettings,
   DefecationLog,
-  EnvironmentLog,
   FeedingLog,
   PresetSelection,
   TmiLog,
@@ -29,7 +28,6 @@ export default function App() {
   const [weightLogs, setWeightLogs] = useState<WeightLog[]>(() => store.getWeightLogs())
   const [tmiLogs, setTmiLogs] = useState<TmiLog[]>(() => store.getTmiLogs())
   const [presetSelections, setPresetSelections] = useState<PresetSelection[]>(() => store.getPresetSelections())
-  const [environmentLogs, setEnvironmentLogs] = useState<EnvironmentLog[]>(() => store.getEnvironmentLogs())
   const [defecationLogs, setDefecationLogs] = useState<DefecationLog[]>(() => store.getDefecationLogs())
 
   useEffect(() => {
@@ -76,13 +74,6 @@ export default function App() {
       })
     },
 
-    addEnvironment(log: EnvironmentLog) {
-      setEnvironmentLogs((prev) => {
-        const next = [log, ...prev]
-        store.saveEnvironmentLogs(next)
-        return next
-      })
-    },
 
     addDefecation(log: DefecationLog) {
       setDefecationLogs((prev) => {
@@ -122,7 +113,6 @@ export default function App() {
             weightLogs={weightLogs}
             tmiLogs={tmiLogs}
             presetSelections={presetSelections}
-            environmentLogs={environmentLogs}
             defecationLogs={defecationLogs}
             onAddRecord={openRecord}
           />
@@ -135,7 +125,6 @@ export default function App() {
             onAddWeight={actions.addWeight}
             onAddTmi={actions.addTmi}
             onAddPreset={actions.addPreset}
-            onAddEnvironment={actions.addEnvironment}
             onAddDefecation={actions.addDefecation}
           />
         )}
@@ -149,7 +138,6 @@ export default function App() {
             weightLogs={weightLogs}
             tmiLogs={tmiLogs}
             presetSelections={presetSelections}
-            environmentLogs={environmentLogs}
             defecationLogs={defecationLogs}
             onSave={saveSettings}
           />
