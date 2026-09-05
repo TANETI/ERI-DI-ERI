@@ -1128,21 +1128,29 @@ select:focus {
   transform: none;
 }
 
+.gecko-heading {
+  display: block;
+  line-height: 1;
+  transform-origin: 50% 50%;
+  transition: transform 45ms linear;
+}
+
 .gecko-sprite {
   display: block;
   line-height: 1;
   transform-origin: 50% 50%;
-  transform: rotate(-5deg) scaleX(1);
 }
 
 /*
- * 이동 중에는 이모지 자체를 아주 빠르게 좌우반전한다.
- * 부드럽게 찌그러지는 보간이 아니라 '탁탁' 뒤집히도록 step-end를 사용해서
- * 작은 도마뱀이 몸을 번갈아 틀며 쏜살같이 뛰는 느낌을 만든다.
+ * 바깥 .gecko-heading이 이동 벡터를 향하도록 전체 이모지를 회전한다.
+ * 안쪽 .gecko-sprite는 그 진행축을 유지한 채 좌우로만 반전한다.
+ *
+ * 따라서 대각선 아래로 도망가면 고개도 대각선 아래를 향하고,
+ * 달리는 동안에는 몸만 좌우로 탁탁 흔들리는 느낌이 난다.
  */
 .gecko-easter-egg.moving .gecko-sprite,
 .gecko-sprite.running {
-  animation: gecko-run-flip 96ms step-end infinite;
+  animation: gecko-run-side-flip 96ms step-end infinite;
 }
 
 .gecko-easter-egg.moving {
@@ -1162,12 +1170,12 @@ select:focus {
   animation: gecko-pop-text 420ms ease-out forwards;
 }
 
-@keyframes gecko-run-flip {
-  0% {
-    transform: rotate(-7deg) scaleX(1) translateY(1px);
+@keyframes gecko-run-side-flip {
+  0%, 49% {
+    transform: scaleX(1) rotate(-5deg) translateY(1px);
   }
-  50% {
-    transform: rotate(7deg) scaleX(-1) translateY(-1px);
+  50%, 99% {
+    transform: scaleX(-1) rotate(5deg) translateY(-1px);
   }
 }
 

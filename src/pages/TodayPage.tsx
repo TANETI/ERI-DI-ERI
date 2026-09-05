@@ -48,6 +48,7 @@ export default function TodayPage({
 }: Props) {
   const geckoRef = useRef<HTMLButtonElement>(null)
   const [geckoPosition, setGeckoPosition] = useState<{ x: number; y: number } | null>(null)
+  const [geckoAngle, setGeckoAngle] = useState(0)
   const [geckoMoving, setGeckoMoving] = useState(false)
   const [geckoPopped, setGeckoPopped] = useState(false)
 
@@ -97,6 +98,11 @@ export default function TodayPage({
       '(prefers-reduced-motion: reduce)',
     ).matches
 
+    // 🦎 이모지는 기본적으로 고개가 위쪽을 향하므로,
+    // 이동 벡터의 atan2 각도에 +90°를 더해 고개가 목적지를 향하게 한다.
+    const travelAngle =
+      (Math.atan2(target.y - current.y, target.x - current.x) * 180) / Math.PI + 90
+    setGeckoAngle(travelAngle)
     setGeckoPopped(false)
 
     const arrive = () => {
@@ -180,10 +186,13 @@ export default function TodayPage({
           }
         >
           <span
-            className={`gecko-sprite ${geckoMoving ? 'running' : ''}`}
+            className="gecko-heading"
+            style={{ transform: `rotate(${geckoAngle}deg)` }}
             aria-hidden="true"
           >
-            🦎
+            <span className={`gecko-sprite ${geckoMoving ? 'running' : ''}`}>
+              🦎
+            </span>
           </span>
           {geckoPopped && <span className="gecko-pop" aria-hidden="true">쀽!</span>}
         </button>
