@@ -1,0 +1,84 @@
+/* Phase 1.4 — calendar information cleanup */
+.calendar-events {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.calendar-event {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 6px 7px;
+  border-radius: 9px;
+  text-align: left;
+  line-height: 1.15;
+}
+
+.calendar-event strong {
+  font-size: .68rem;
+  font-weight: 900;
+}
+
+.calendar-event small {
+  font-size: .62rem;
+  color: inherit;
+  opacity: .82;
+}
+
+.calendar-event.feeding-event.complete {
+  background: var(--sage-soft);
+  color: var(--sage-dark);
+}
+
+.calendar-event.feeding-event.due {
+  background: #f7eee2;
+  color: #76543c;
+}
+
+.calendar-event.feeding-event.standalone {
+  background: #f2f0eb;
+  color: var(--muted);
+}
+
+.minor-events {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.minor-events > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 2px 5px;
+  border-radius: 7px;
+  background: #f4f0e8;
+  color: var(--muted);
+  font-size: .58rem;
+  font-weight: 800;
+}
+
+.calendar-note {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  line-height: 1.6;
+}
+
+@media (max-width: 560px) {
+  .calendar-cell {
+    min-height: 92px;
+  }
+
+  .calendar-event {
+    padding: 5px 6px;
+  }
+
+  .calendar-event strong {
+    font-size: .62rem;
+  }
+
+  .calendar-event small {
+    font-size: .56rem;
+  }
+}
