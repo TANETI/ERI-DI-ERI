@@ -2,6 +2,10 @@ export type RepositoryMode =
   | 'local'
   | 'cloud'
 
+export type CloudPhotoMode =
+  | 'local'
+  | 'r2'
+
 const MODE_KEY =
   'eri-di-ery.repository-mode'
 
@@ -10,6 +14,9 @@ const API_BASE_KEY =
 
 const DEV_TOKEN_KEY =
   'eri-di-ery.cloud-dev-token'
+
+const PHOTO_MODE_KEY =
+  'eri-di-ery.cloud-photo-mode'
 
 const DEFAULT_API_BASE =
   'http://localhost:8787'
@@ -102,5 +109,28 @@ export function clearCloudDevToken() {
 
   sessionStorage.removeItem(
     DEV_TOKEN_KEY,
+  )
+}
+
+
+export function getCloudPhotoMode():
+CloudPhotoMode {
+  if (!hasWindow()) return 'local'
+
+  return localStorage.getItem(
+    PHOTO_MODE_KEY,
+  ) === 'r2'
+    ? 'r2'
+    : 'local'
+}
+
+export function setCloudPhotoMode(
+  mode: CloudPhotoMode,
+) {
+  if (!hasWindow()) return
+
+  localStorage.setItem(
+    PHOTO_MODE_KEY,
+    mode,
   )
 }

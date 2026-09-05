@@ -2,11 +2,16 @@ import { localRepository } from './localRepository'
 import {
   getCloudApiBase,
   getCloudDevToken,
+  getCloudPhotoMode,
 } from './repositoryPreferences'
 import type { AppRepository } from './repository'
 import type {
+  PhotoMeta,
   StructuredDataSnapshot,
 } from '../types'
+import type {
+  PhotoBlobEntry,
+} from './repository'
 
 type ApiErrorBody = {
   error?: {
@@ -22,22 +27,12 @@ function apiUrl(path: string) {
   return `${base}${path}`
 }
 
-async function requestJson<T>(
-  path: string,
-  init: RequestInit = {},
-): Promise<T> {
-  const headers =
-    new Headers(init.headers)
 
-  if (
-    init.body !== undefined &&
-    !headers.has('Content-Type')
-  ) {
-    headers.set(
-      'Content-Type',
-      'application/json',
-    )
-  }
+function authHeaders(
+  init: HeadersInit = {},
+) {
+  const headers =
+    new Headers(init)
 
   const devToken =
     getCloudDevToken()
@@ -48,6 +43,16 @@ async function requestJson<T>(
       `Bearer ${devToken}`,
     )
   }
+
+  return headers
+}
+
+async function requestRaw(
+  path: string,
+  init: RequestInit = {},
+) {
+  const headers =
+    authHeaders(init.headers)
 
   let response: Response
 
@@ -67,42 +72,79 @@ async function requestJson<T>(
     )
   }
 
-  let body: unknown = null
+  return response
+}
+
+async function responseError(
+  response: Response,
+) {
+  let body: ApiErrorBody | null =
+    null
 
   try {
-    body = await response.json()
+    body =
+      await response.json() as ApiErrorBody
   } catch {
-    // JSON이 아닌 오류 응답도 status 기준으로 처리한다.
+    // binary/text response may not be JSON
   }
 
-  if (!response.ok) {
-    const errorBody =
-      body as ApiErrorBody | null
+  const message =
+    body?.error?.message
 
-    const message =
-      errorBody?.error?.message
-
-    if (response.status === 401) {
-      throw new Error(
-        message ??
-          '클라우드 인증에 실패했어요. 로컬 테스트라면 개발용 API 토큰을 확인해 주세요.',
-      )
-    }
-
-    if (response.status === 503) {
-      throw new Error(
-        message ??
-          'Worker 인증 설정이 아직 준비되지 않았어요.',
-      )
-    }
-
-    throw new Error(
+  if (response.status === 401) {
+    return new Error(
       message ??
-        `클라우드 요청에 실패했어요. (${response.status})`,
+        '클라우드 인증에 실패했어요. 로컬 테스트라면 개발용 API 토큰을 확인해 주세요.',
     )
   }
 
-  return body as T
+  if (response.status === 503) {
+    return new Error(
+      message ??
+        'Worker 인증 설정이 아직 준비되지 않았어요.',
+    )
+  }
+
+  return new Error(
+    message ??
+      `클라우드 요청에 실패했어요. (${response.status})`,
+  )
+}
+
+async function requestJson<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const headers =
+    authHeaders(init.headers)
+
+  if (
+    init.body !== undefined &&
+    !headers.has('Content-Type') &&
+    !(init.body instanceof FormData)
+  ) {
+    headers.set(
+      'Content-Type',
+      'application/json',
+    )
+  }
+
+  const response =
+    await requestRaw(
+      path,
+      {
+        ...init,
+        headers,
+      },
+    )
+
+  if (!response.ok) {
+    throw await responseError(
+      response,
+    )
+  }
+
+  return await response.json() as T
 }
 
 async function putJson(
@@ -183,6 +225,134 @@ export async function readCloudSnapshot() {
   return payload.data
 }
 
+
+export async function readCloudPhotos() {
+  const payload =
+    await requestJson<{
+      photos: PhotoMeta[]
+    }>(
+      '/api/v1/photos/meta',
+    )
+
+  return payload.photos ?? []
+}
+
+export async function uploadCloudPhoto(
+  meta: PhotoMeta,
+  blob: Blob,
+) {
+  const form =
+    new FormData()
+
+  form.append(
+    'meta',
+    JSON.stringify(meta),
+  )
+  form.append(
+    'file',
+    blob,
+    meta.fileName,
+  )
+
+  const payload =
+    await requestJson<{
+      photo: PhotoMeta
+    }>(
+      '/api/v1/photos',
+      {
+        method: 'POST',
+        body: form,
+      },
+    )
+
+  return payload.photo
+}
+
+export async function saveCloudPhotoMeta(
+  meta: PhotoMeta,
+) {
+  await putJson(
+    `/api/v1/photos/${encodeURIComponent(meta.id)}/meta`,
+    meta,
+  )
+}
+
+export async function getCloudPhotoBlob(
+  id: string,
+): Promise<Blob | null> {
+  const response =
+    await requestRaw(
+      `/api/v1/photos/${encodeURIComponent(id)}/content`,
+    )
+
+  if (response.status === 404) {
+    return null
+  }
+
+  if (!response.ok) {
+    throw await responseError(
+      response,
+    )
+  }
+
+  return response.blob()
+}
+
+export async function deleteCloudPhoto(
+  id: string,
+) {
+  const response =
+    await requestRaw(
+      `/api/v1/photos/${encodeURIComponent(id)}`,
+      {
+        method: 'DELETE',
+      },
+    )
+
+  if (!response.ok) {
+    throw await responseError(
+      response,
+    )
+  }
+}
+
+/**
+ * Full backup restore / first migration helper.
+ *
+ * Existing R2 photos are not deleted until every incoming photo
+ * has uploaded successfully. This avoids wiping the old set first.
+ */
+export async function replaceCloudPhotos(
+  entries: PhotoBlobEntry[],
+) {
+  const before =
+    await readCloudPhotos()
+
+  const incomingIds =
+    new Set(
+      entries.map(
+        ({ meta }) => meta.id,
+      ),
+    )
+
+  for (const entry of entries) {
+    await uploadCloudPhoto(
+      entry.meta,
+      entry.blob,
+    )
+  }
+
+  for (const old of before) {
+    if (
+      !incomingIds.has(old.id)
+    ) {
+      await deleteCloudPhoto(
+        old.id,
+      )
+    }
+  }
+}
+
 export const cloudflareRepository:
 AppRepository = {
   async initialize() {
@@ -256,36 +426,85 @@ AppRepository = {
     )
   },
 
-  // Phase 5.2에서는 사진은 기존 브라우저 IndexedDB를 유지한다.
   async listPhotos() {
-    return localRepository.listPhotos()
+    return getCloudPhotoMode() === 'r2'
+      ? readCloudPhotos()
+      : localRepository.listPhotos()
   },
 
   async addPhoto(file, date, isCover) {
-    return localRepository.addPhoto(
-      file,
+    if (
+      getCloudPhotoMode() !== 'r2'
+    ) {
+      return localRepository.addPhoto(
+        file,
+        date,
+        isCover,
+      )
+    }
+
+    const meta: PhotoMeta = {
+      id: crypto.randomUUID(),
       date,
+      createdAt:
+        new Date().toISOString(),
       isCover,
+      fileName:
+        file.name ||
+        `eri-${date}.jpg`,
+      mimeType:
+        file.type ||
+        'image/jpeg',
+      sizeBytes: file.size,
+    }
+
+    return uploadCloudPhoto(
+      meta,
+      file,
     )
   },
 
   async savePhotoMeta(meta) {
-    await localRepository.savePhotoMeta(
-      meta,
-    )
+    if (
+      getCloudPhotoMode() === 'r2'
+    ) {
+      await saveCloudPhotoMeta(
+        meta,
+      )
+      return
+    }
+
+    await localRepository
+      .savePhotoMeta(meta)
   },
 
   async getPhotoBlob(id) {
-    return localRepository.getPhotoBlob(
-      id,
-    )
+    return getCloudPhotoMode() === 'r2'
+      ? getCloudPhotoBlob(id)
+      : localRepository.getPhotoBlob(id)
   },
 
   async deletePhoto(id) {
+    if (
+      getCloudPhotoMode() === 'r2'
+    ) {
+      await deleteCloudPhoto(id)
+      return
+    }
+
     await localRepository.deletePhoto(id)
   },
 
   async replacePhotos(entries) {
+    if (
+      getCloudPhotoMode() === 'r2'
+    ) {
+      await replaceCloudPhotos(
+        entries,
+      )
+      return
+    }
+
     await localRepository.replacePhotos(
       entries,
     )

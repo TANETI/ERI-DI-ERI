@@ -106,20 +106,25 @@ export {
 
 export {
   checkCloudHealth,
+  readCloudPhotos,
   readCloudSnapshot,
+  replaceCloudPhotos,
 } from './cloudflareRepository'
 
 export {
   clearCloudDevToken,
   getCloudApiBase,
   getCloudDevToken,
+  getCloudPhotoMode,
   getRepositoryMode,
   setCloudApiBase,
   setCloudDevToken,
+  setCloudPhotoMode,
   setRepositoryMode,
 } from './repositoryPreferences'
 
 export type {
+  CloudPhotoMode,
   RepositoryMode,
 } from './repositoryPreferences'
 

@@ -20,3 +20,42 @@ interface D1Database {
     statements: D1PreparedStatement[],
   ): Promise<D1Result<T>[]>
 }
+
+
+interface R2HTTPMetadata {
+  contentType?: string
+}
+
+interface R2PutOptions {
+  httpMetadata?: R2HTTPMetadata
+  customMetadata?: Record<string, string>
+}
+
+interface R2ObjectBody {
+  key: string
+  size: number
+  httpEtag?: string
+  httpMetadata?: R2HTTPMetadata
+  customMetadata?: Record<string, string>
+  body: ReadableStream<Uint8Array>
+}
+
+interface R2Object {
+  key: string
+  size: number
+  httpEtag?: string
+  httpMetadata?: R2HTTPMetadata
+  customMetadata?: Record<string, string>
+}
+
+interface R2Bucket {
+  put(
+    key: string,
+    value: ArrayBuffer | ReadableStream<Uint8Array>,
+    options?: R2PutOptions,
+  ): Promise<R2Object | null>
+
+  get(key: string): Promise<R2ObjectBody | null>
+  head(key: string): Promise<R2Object | null>
+  delete(key: string): Promise<void>
+}

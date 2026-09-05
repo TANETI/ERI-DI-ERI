@@ -16,6 +16,7 @@ import type {
 
 export type Env = {
   DB: D1Database
+  PHOTOS: R2Bucket
   API_TOKEN?: string
   ALLOWED_ORIGIN?: string
 }

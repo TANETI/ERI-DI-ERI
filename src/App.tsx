@@ -8,6 +8,7 @@ import TodayPage from './pages/TodayPage'
 import { todayISO, toISODate } from './lib/date'
 import {
   appRepository,
+  getCloudPhotoMode,
   getRepositoryMode,
 } from './data'
 import { defaultSettings } from './lib/defaultSettings'
@@ -532,12 +533,12 @@ const deletePhoto = async (id: string) => {
           className={`repository-mode-dot ${getRepositoryMode()}`}
           title={
             getRepositoryMode() === 'cloud'
-              ? '구조화 기록: D1 · 사진: 로컬'
+              ? `구조화 기록: D1 · 사진: ${getCloudPhotoMode() === 'r2' ? 'R2' : '로컬'}`
               : '구조화 기록/사진: 로컬'
           }
           aria-label={
             getRepositoryMode() === 'cloud'
-              ? '클라우드 구조화 기록 모드'
+              ? `클라우드 기록 모드 · 사진 ${getCloudPhotoMode() === 'r2' ? 'R2' : '로컬'}`
               : '로컬 기록 모드'
           }
         />

@@ -1,31 +1,19 @@
-# ERI DI-ERY Worker API v1
-
-Phase 5.1에서는 프론트엔드가 아직 이 API를 사용하지 않습니다.
-로컬 저장소는 그대로 기본이며, Worker + D1의 서버 기반만 만듭니다.
+# ERI DI-ERY Worker API v1 — Phase 5.3
 
 ## Public
 
 ### GET /api/health
 
-D1 migration 적용 여부와 API 상태를 확인합니다.
+Worker / D1 schema 상태를 확인합니다.
 
-## Protected
+## Authentication
 
-`/api/v1/*`는 현재:
+`/api/v1/*`는 현재 개발 단계 Bearer API_TOKEN을 요구합니다.
 
-```http
-Authorization: Bearer <API_TOKEN>
-```
+실제 브라우저 배포에서는 이 토큰을 번들에 넣지 않고
+Cloudflare Access 인증으로 교체합니다.
 
-이 필요합니다.
-
-API_TOKEN이 Worker에 설정되지 않은 상태에서는
-보호 API가 503으로 닫힙니다.
-
-이 토큰을 브라우저 앱에 넣는 것은 금지합니다.
-Phase 5.2에서 브라우저 연결 전에 Cloudflare Access 인증 경계를 따로 구성할 예정입니다.
-
-## Structured data
+## Structured data / D1
 
 - GET `/api/v1/snapshot`
 - PUT `/api/v1/snapshot`
@@ -38,31 +26,43 @@ Phase 5.2에서 브라우저 연결 전에 Cloudflare Access 인증 경계를 �
 - PUT `/api/v1/evaluations`
 - PUT `/api/v1/decisions`
 
-각 collection PUT은 해당 collection 전체를 한 번에 교체합니다.
+## Photos / D1 + R2
 
-Phase 5.0 Repository가 현재도 배열 단위 저장 메서드를 사용하므로,
-CloudflareRepository를 붙일 때 UI 의미를 바꾸지 않고 연결하기 위한 형태입니다.
+### GET `/api/v1/photos/meta`
 
-D1의 `batch()`를 사용해 collection 단위 DELETE + INSERT를 묶습니다.
+D1의 사진 메타데이터 목록.
 
-## Photo metadata
+### POST `/api/v1/photos`
 
-- GET `/api/v1/photos/meta`
-- PUT `/api/v1/photos/meta`
+`multipart/form-data`
 
-사진 원본은 아직 지원하지 않습니다.
+- `meta`: PhotoMeta JSON 문자열
+- `file`: 이미지 원본
 
-Phase 5.3에서:
+Worker가:
+1. `photos/<photo-id>` key로 R2에 원본 저장
+2. D1 `photo_meta.object_key`와 연결
 
-- R2 object upload
-- object download
-- delete
-- photo_meta.object_key 연결
+합니다.
 
-을 추가합니다.
+최대 파일 크기: 30 MiB.
 
-## Full snapshot
+### GET `/api/v1/photos/:id/content`
 
-`PUT /api/v1/snapshot`은 백업 복원이나 최초 로컬→클라우드 업로드에 사용할 기반입니다.
+D1 object_key를 조회해 R2 원본을 스트리밍합니다.
 
-사진 메타/원본은 snapshot에 포함하지 않습니다.
+### PUT `/api/v1/photos/:id/meta`
+
+캡션 / 대표사진 여부 등 메타데이터만 변경합니다.
+R2 원본 object_key는 유지됩니다.
+
+### DELETE `/api/v1/photos/:id`
+
+R2 object와 D1 photo_meta row를 함께 삭제합니다.
+
+## Safety
+
+로컬→R2 전체 복사는 클라이언트가 각 사진을 먼저 업로드하고,
+모든 incoming 사진 업로드가 성공한 뒤 기존 R2의 불필요한 사진을 삭제합니다.
+
+따라서 새 복사 작업을 시작하자마자 기존 R2 세트를 먼저 비우지 않습니다.

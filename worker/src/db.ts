@@ -655,6 +655,21 @@ export const replaceManagementDecisions = (
   rows: ManagementDecision[],
 ) => runBatch(db, decisionStatements(db, rows))
 
+function rowToPhotoMeta(
+  row: PhotoRow,
+): PhotoMeta {
+  return {
+    id: row.id,
+    date: row.date,
+    createdAt: row.created_at,
+    caption: row.caption ?? undefined,
+    isCover: Boolean(row.is_cover),
+    fileName: row.file_name,
+    mimeType: row.mime_type,
+    sizeBytes: row.size_bytes,
+  }
+}
+
 export async function readPhotoMeta(
   db: D1Database,
 ): Promise<PhotoMeta[]> {
@@ -664,19 +679,109 @@ export async function readPhotoMeta(
      ORDER BY date DESC, created_at DESC`,
   )
 
-  return rows.map((row) => ({
-    id: row.id,
-    date: row.date,
-    createdAt: row.created_at,
-    caption: row.caption ?? undefined,
-    isCover: Boolean(row.is_cover),
-    fileName: row.file_name,
-    mimeType: row.mime_type,
-    sizeBytes: row.size_bytes,
-  }))
+  return rows.map(rowToPhotoMeta)
 }
 
-export const replacePhotoMeta = (
+export async function readPhotoRow(
   db: D1Database,
-  rows: PhotoMeta[],
-) => runBatch(db, photoStatements(db, rows))
+  id: string,
+): Promise<PhotoRow | null> {
+  return db
+    .prepare(`
+      SELECT *
+      FROM photo_meta
+      WHERE id = ?
+    `)
+    .bind(id)
+    .first<PhotoRow>()
+}
+
+export async function upsertPhotoMeta(
+  db: D1Database,
+  meta: PhotoMeta,
+  objectKey: string,
+) {
+  const result = await db
+    .prepare(`
+      INSERT INTO photo_meta (
+        id,
+        date,
+        created_at,
+        caption,
+        is_cover,
+        file_name,
+        mime_type,
+        size_bytes,
+        object_key
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        date = excluded.date,
+        created_at = excluded.created_at,
+        caption = excluded.caption,
+        is_cover = excluded.is_cover,
+        file_name = excluded.file_name,
+        mime_type = excluded.mime_type,
+        size_bytes = excluded.size_bytes,
+        object_key = excluded.object_key
+    `)
+    .bind(
+      meta.id,
+      meta.date,
+      meta.createdAt,
+      nullable(meta.caption),
+      meta.isCover ? 1 : 0,
+      meta.fileName,
+      meta.mimeType,
+      meta.sizeBytes,
+      objectKey,
+    )
+    .run()
+
+  if (!result.success) {
+    throw new Error(
+      result.error ||
+        'Failed to save photo metadata.',
+    )
+  }
+}
+
+export async function updatePhotoMeta(
+  db: D1Database,
+  meta: PhotoMeta,
+) {
+  const current =
+    await readPhotoRow(db, meta.id)
+
+  if (!current?.object_key) {
+    return false
+  }
+
+  await upsertPhotoMeta(
+    db,
+    meta,
+    current.object_key,
+  )
+
+  return true
+}
+
+export async function deletePhotoMeta(
+  db: D1Database,
+  id: string,
+) {
+  const result = await db
+    .prepare(`
+      DELETE FROM photo_meta
+      WHERE id = ?
+    `)
+    .bind(id)
+    .run()
+
+  if (!result.success) {
+    throw new Error(
+      result.error ||
+        'Failed to delete photo metadata.',
+    )
+  }
+}

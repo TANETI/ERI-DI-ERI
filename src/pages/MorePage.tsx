@@ -20,11 +20,15 @@ import {
   cloudflareRepository,
   getCloudApiBase,
   getCloudDevToken,
+  getCloudPhotoMode,
   getRepositoryMode,
   localRepository,
+  readCloudPhotos,
   readCloudSnapshot,
+  replaceCloudPhotos,
   setCloudApiBase,
   setCloudDevToken,
+  setCloudPhotoMode,
   setRepositoryMode,
 } from '../data'
 import type {
@@ -333,6 +337,182 @@ export default function MorePage({
     }
   }
 
+  const inspectCloudPhotos = async () => {
+    setCloudBusy(true)
+    setCloudStatus('')
+
+    try {
+      saveCloudConnectionDrafts()
+
+      const cloudPhotos =
+        await readCloudPhotos()
+
+      const totalBytes =
+        cloudPhotos.reduce(
+          (sum, photo) =>
+            sum + photo.sizeBytes,
+          0,
+        )
+
+      setCloudStatus(
+        `R2 사진 메타 ${cloudPhotos.length}장 · ${(totalBytes / 1024 / 1024).toFixed(1)} MiB`,
+      )
+    } catch (error) {
+      setCloudStatus(
+        error instanceof Error
+          ? error.message
+          : 'R2 사진 상태 확인에 실패했어요.',
+      )
+    } finally {
+      setCloudBusy(false)
+    }
+  }
+
+  const uploadLocalPhotos = async () => {
+    const localPhotos =
+      await localRepository.listPhotos()
+
+    if (!localPhotos.length) {
+      setCloudStatus(
+        '이 브라우저에 옮길 로컬 사진이 없어요.',
+      )
+      return
+    }
+
+    const confirmed =
+      window.confirm(
+        `현재 브라우저의 사진 ${localPhotos.length}장을 R2로 업로드합니다.\n\n같은 ID의 R2 사진은 교체되고, 모든 업로드가 성공한 뒤 로컬에 없는 R2 사진은 정리합니다. 로컬 원본은 삭제하지 않습니다. 계속할까요?`,
+      )
+
+    if (!confirmed) return
+
+    setCloudBusy(true)
+    setCloudStatus(
+      `로컬 사진 ${localPhotos.length}장 준비 중…`,
+    )
+
+    try {
+      saveCloudConnectionDrafts()
+
+      const entries = []
+
+      for (let index = 0; index < localPhotos.length; index += 1) {
+        const meta =
+          localPhotos[index]
+
+        setCloudStatus(
+          `사진 준비 중 ${index + 1}/${localPhotos.length} · ${meta.date}`,
+        )
+
+        const blob =
+          await localRepository.getPhotoBlob(
+            meta.id,
+          )
+
+        if (!blob) {
+          throw new Error(
+            `${meta.date} 사진 원본 하나를 로컬 저장소에서 읽지 못했어요.`,
+          )
+        }
+
+        entries.push({
+          meta,
+          blob,
+        })
+      }
+
+      setCloudStatus(
+        `R2 업로드 중 · ${entries.length}장`,
+      )
+
+      await replaceCloudPhotos(
+        entries,
+      )
+
+      const verified =
+        await readCloudPhotos()
+
+      setCloudStatus(
+        `R2 업로드 완료 · ${verified.length}장 확인 · 로컬 사진은 그대로 보존됨`,
+      )
+    } catch (error) {
+      setCloudStatus(
+        error instanceof Error
+          ? error.message
+          : '사진 R2 업로드에 실패했어요.',
+      )
+    } finally {
+      setCloudBusy(false)
+    }
+  }
+
+  const activateCloudPhotoMode = async (
+    nextMode: 'local' | 'r2',
+  ) => {
+    if (
+      nextMode === getCloudPhotoMode()
+    ) {
+      setCloudStatus(
+        nextMode === 'r2'
+          ? '이미 R2 사진 모드를 사용 중이에요.'
+          : '이미 로컬 사진 모드를 사용 중이에요.',
+      )
+      return
+    }
+
+    if (nextMode === 'r2') {
+      setCloudBusy(true)
+
+      try {
+        saveCloudConnectionDrafts()
+
+        const [
+          localPhotos,
+          cloudPhotos,
+        ] = await Promise.all([
+          localRepository.listPhotos(),
+          readCloudPhotos(),
+        ])
+
+        if (
+          localPhotos.length > 0 &&
+          cloudPhotos.length === 0
+        ) {
+          setCloudStatus(
+            '로컬 사진이 있는데 R2가 비어 있어요. 먼저 ‘로컬 사진 → R2’를 실행해 주세요.',
+          )
+          setCloudBusy(false)
+          return
+        }
+
+        setCloudPhotoMode('r2')
+
+        window.alert(
+          `R2 사진 모드로 전환합니다. R2 사진 ${cloudPhotos.length}장을 사용하고, 기존 IndexedDB 사진은 백업으로 그대로 남겨둡니다.`,
+        )
+
+        window.location.reload()
+      } catch (error) {
+        setCloudStatus(
+          error instanceof Error
+            ? error.message
+            : 'R2 사진 모드로 전환하지 못했어요.',
+        )
+        setCloudBusy(false)
+      }
+
+      return
+    }
+
+    setCloudPhotoMode('local')
+
+    window.alert(
+      '사진을 다시 이 브라우저의 IndexedDB에서 읽습니다. R2 사진은 삭제하지 않아요.',
+    )
+
+    window.location.reload()
+  }
+
   const activateRepositoryMode = async (
     nextMode: 'local' | 'cloud',
   ) => {
@@ -357,7 +537,7 @@ export default function MorePage({
         setRepositoryMode('cloud')
 
         window.alert(
-          '클라우드 모드로 전환합니다. 사진은 아직 이 브라우저의 로컬 저장소를 사용해요.',
+          `클라우드 모드로 전환합니다. 사진은 ${getCloudPhotoMode() === 'r2' ? 'R2' : '이 브라우저의 로컬 저장소'}를 사용해요.`,
         )
 
         window.location.reload()
@@ -706,12 +886,12 @@ export default function MorePage({
           <Card title="클라우드 데이터 실험실" icon="☁️">
             <div className="cloud-lab-head">
               <div>
-                <span>Phase 5.2</span>
+                <span>Phase 5.3</span>
                 <strong>
-                  구조화 기록만 D1과 연결
+                  D1 기록 + R2 사진 저장
                 </strong>
                 <small>
-                  사진 원본과 사진 메타데이터는 아직 이 브라우저에 남아 있어요.
+                  먼저 로컬 사진을 R2로 복사한 뒤 사진 저장소를 안전하게 전환할 수 있어요.
                 </small>
               </div>
 
@@ -782,6 +962,90 @@ export default function MorePage({
               </button>
             </div>
 
+            <div className="cloud-photo-panel">
+              <div className="cloud-photo-panel-head">
+                <div>
+                  <span>사진 저장소</span>
+                  <strong>
+                    {getCloudPhotoMode() === 'r2'
+                      ? 'Cloudflare R2'
+                      : '이 브라우저 IndexedDB'}
+                  </strong>
+                </div>
+
+                <span
+                  className={`cloud-photo-badge ${getCloudPhotoMode()}`}
+                >
+                  {getCloudPhotoMode() === 'r2'
+                    ? 'R2'
+                    : 'LOCAL'}
+                </span>
+              </div>
+
+              <div className="cloud-lab-actions">
+                <button
+                  type="button"
+                  disabled={cloudBusy}
+                  onClick={() =>
+                    void inspectCloudPhotos()
+                  }
+                >
+                  🖼️ R2 사진 확인
+                </button>
+
+                <button
+                  type="button"
+                  disabled={cloudBusy}
+                  onClick={() =>
+                    void uploadLocalPhotos()
+                  }
+                >
+                  ⬆️ 로컬 사진 → R2
+                </button>
+              </div>
+
+              <div className="cloud-mode-switch cloud-photo-switch">
+                <button
+                  type="button"
+                  className={
+                    getCloudPhotoMode() === 'local'
+                      ? 'active'
+                      : ''
+                  }
+                  disabled={cloudBusy}
+                  onClick={() =>
+                    void activateCloudPhotoMode(
+                      'local',
+                    )
+                  }
+                >
+                  브라우저 사진
+                </button>
+
+                <button
+                  type="button"
+                  className={
+                    getCloudPhotoMode() === 'r2'
+                      ? 'active'
+                      : ''
+                  }
+                  disabled={cloudBusy}
+                  onClick={() =>
+                    void activateCloudPhotoMode(
+                      'r2',
+                    )
+                  }
+                >
+                  R2 사진
+                </button>
+              </div>
+
+              <p className="cloud-photo-note">
+                R2로 옮겨도 기존 IndexedDB 원본은 자동 삭제하지 않아요.
+                먼저 복사 → 확인 → R2 전환 순서로 진행합니다.
+              </p>
+            </div>
+
             <div className="cloud-mode-switch">
               <button
                 type="button"
@@ -827,7 +1091,7 @@ export default function MorePage({
             <div className="cloud-lab-warning">
               <strong>개발 단계 인증</strong>
               <p>
-                로컬 테스트에서는 Worker의 API_TOKEN을 현재 탭의
+                로컬 D1/R2 테스트에서는 Worker의 API_TOKEN을 현재 탭의
                 sessionStorage에만 넣어 사용합니다. 실제 배포에서는
                 브라우저 번들에 토큰을 넣지 않고 Cloudflare Access
                 인증으로 교체할 예정입니다.
