@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Card from '../components/Card'
 import WeatherContextCard from '../components/WeatherContextCard'
 import {
@@ -46,22 +46,86 @@ export default function TodayPage({
   weightLogs,
   onQuickRecord,
 }: Props) {
+  const geckoRef = useRef<HTMLButtonElement>(null)
   const [geckoPosition, setGeckoPosition] = useState<{ x: number; y: number } | null>(null)
+  const [geckoMoving, setGeckoMoving] = useState(false)
   const [geckoPopped, setGeckoPopped] = useState(false)
 
-  const teleportGecko = () => {
+  const pickGeckoTarget = (currentX: number, currentY: number) => {
     const size = 62
     const padding = 18
+    const bottomSafeArea = 108
     const maxX = Math.max(padding, window.innerWidth - size - padding)
-    const maxY = Math.max(padding, window.innerHeight - size - 110)
+    const maxY = Math.max(padding, window.innerHeight - size - bottomSafeArea)
 
-    setGeckoPosition({
-      x: Math.round(padding + Math.random() * Math.max(0, maxX - padding)),
-      y: Math.round(padding + Math.random() * Math.max(0, maxY - padding)),
-    })
+    const availableWidth = Math.max(1, maxX - padding)
+    const availableHeight = Math.max(1, maxY - padding)
+    const minDistance = Math.min(
+      220,
+      Math.max(110, Math.hypot(availableWidth, availableHeight) * 0.28),
+    )
 
-    setGeckoPopped(true)
-    window.setTimeout(() => setGeckoPopped(false), 420)
+    let target = { x: padding, y: padding }
+
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const candidate = {
+        x: Math.round(padding + Math.random() * availableWidth),
+        y: Math.round(padding + Math.random() * availableHeight),
+      }
+
+      target = candidate
+
+      if (Math.hypot(candidate.x - currentX, candidate.y - currentY) >= minDistance) {
+        break
+      }
+    }
+
+    return target
+  }
+
+  const runGecko = () => {
+    const element = geckoRef.current
+    if (!element) return
+
+    const rect = element.getBoundingClientRect()
+    const current = {
+      x: Math.round(rect.left),
+      y: Math.round(rect.top),
+    }
+    const target = pickGeckoTarget(current.x, current.y)
+    const prefersReducedMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches
+
+    setGeckoPopped(false)
+
+    const arrive = () => {
+      setGeckoMoving(false)
+      setGeckoPopped(true)
+      window.setTimeout(() => setGeckoPopped(false), 420)
+    }
+
+    if (prefersReducedMotion) {
+      setGeckoPosition(target)
+      arrive()
+      return
+    }
+
+    setGeckoMoving(true)
+
+    // 첫 클릭에서는 원래 헤더 위치를 fixed 좌표로 먼저 고정한 뒤
+    // 다음 프레임에 목적지를 넣어야 순간이동하지 않고 이동 과정이 보인다.
+    if (!geckoPosition) {
+      setGeckoPosition(current)
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setGeckoPosition(target)
+        })
+      })
+    } else {
+      setGeckoPosition(target)
+    }
   }
 
   const today = new Date()
@@ -97,9 +161,16 @@ export default function TodayPage({
           <p className="subtle">에리와 함께한 지 <strong>{dayTogether}일째</strong></p>
         </div>
         <button
+          ref={geckoRef}
           type="button"
-          className={`gecko-badge gecko-easter-egg ${geckoPosition ? 'escaped' : ''} ${geckoPopped ? 'popped' : ''}`}
-          onClick={teleportGecko}
+          className={`gecko-badge gecko-easter-egg ${geckoPosition ? 'escaped' : ''} ${geckoMoving ? 'moving' : ''} ${geckoPopped ? 'popped' : ''}`}
+          onClick={runGecko}
+          onTransitionEnd={(event) => {
+            if (event.propertyName !== 'left' || !geckoMoving) return
+            setGeckoMoving(false)
+            setGeckoPopped(true)
+            window.setTimeout(() => setGeckoPopped(false), 420)
+          }}
           aria-label="도망가는 에리 잡기"
           title="에리?"
           style={
@@ -108,7 +179,12 @@ export default function TodayPage({
               : undefined
           }
         >
-          🦎
+          <span
+            className={`gecko-sprite ${geckoMoving ? 'running' : ''}`}
+            aria-hidden="true"
+          >
+            🦎
+          </span>
           {geckoPopped && <span className="gecko-pop" aria-hidden="true">쀽!</span>}
         </button>
       </header>

@@ -1088,7 +1088,7 @@ select:focus {
 }
 
 
-/* Phase 2.1 — 도망가는 에리 이스터에그 */
+/* Phase 2.5 — 달려서 도망가는 에리 이스터에그 */
 .gecko-easter-egg {
   border: 0;
   padding: 0;
@@ -1096,34 +1096,57 @@ select:focus {
   cursor: pointer;
   user-select: none;
   position: relative;
-  z-index: 12;
+  z-index: 30;
+  transform: none;
   transition:
-    transform 120ms ease,
-    box-shadow 120ms ease;
+    box-shadow 120ms ease,
+    background 120ms ease;
+  will-change: left, top;
 }
 
 .gecko-easter-egg:hover {
-  transform: rotate(-5deg) scale(1.06);
+  transform: none;
   box-shadow: 0 8px 18px rgba(60, 52, 40, .10);
 }
 
 .gecko-easter-egg:active {
-  transform: rotate(-5deg) scale(.92);
+  transform: none;
 }
 
 .gecko-easter-egg.escaped {
   position: fixed;
   margin: 0;
-  transform: rotate(-5deg);
-  animation: gecko-pyoong 180ms ease-out;
+  transform: none;
+  transition:
+    left 260ms cubic-bezier(.22, 1, .36, 1),
+    top 260ms cubic-bezier(.22, 1, .36, 1),
+    box-shadow 120ms ease,
+    background 120ms ease;
 }
 
 .gecko-easter-egg.escaped:hover {
-  transform: rotate(-5deg) scale(1.06);
+  transform: none;
 }
 
-.gecko-easter-egg.popped {
-  animation: gecko-pyoong 180ms ease-out;
+.gecko-sprite {
+  display: block;
+  line-height: 1;
+  transform-origin: 50% 50%;
+  transform: rotate(-5deg) scaleX(1);
+}
+
+/*
+ * 이동 중에는 이모지 자체를 아주 빠르게 좌우반전한다.
+ * 부드럽게 찌그러지는 보간이 아니라 '탁탁' 뒤집히도록 step-end를 사용해서
+ * 작은 도마뱀이 몸을 번갈아 틀며 쏜살같이 뛰는 느낌을 만든다.
+ */
+.gecko-easter-egg.moving .gecko-sprite,
+.gecko-sprite.running {
+  animation: gecko-run-flip 96ms step-end infinite;
+}
+
+.gecko-easter-egg.moving {
+  box-shadow: 0 7px 16px rgba(60, 52, 40, .08);
 }
 
 .gecko-pop {
@@ -1139,10 +1162,13 @@ select:focus {
   animation: gecko-pop-text 420ms ease-out forwards;
 }
 
-@keyframes gecko-pyoong {
-  0% { transform: rotate(-5deg) scale(.78); }
-  65% { transform: rotate(5deg) scale(1.14); }
-  100% { transform: rotate(-5deg) scale(1); }
+@keyframes gecko-run-flip {
+  0% {
+    transform: rotate(-7deg) scaleX(1) translateY(1px);
+  }
+  50% {
+    transform: rotate(7deg) scaleX(-1) translateY(-1px);
+  }
 }
 
 @keyframes gecko-pop-text {
@@ -1162,336 +1188,12 @@ select:focus {
 @media (prefers-reduced-motion: reduce) {
   .gecko-easter-egg,
   .gecko-easter-egg.escaped,
-  .gecko-easter-egg.popped,
+  .gecko-sprite,
   .gecko-pop {
-    animation: none;
-    transition: none;
+    animation: none !important;
+    transition: none !important;
   }
 }
-
-
-/* Phase 2.2 — 지역 날씨 기반 관리 체크 */
-.weather-card.compact {
-  margin-top: 12px;
-}
-
-.weather-summary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.weather-summary > div {
-  display: grid;
-  gap: 3px;
-  padding: 10px 11px;
-  border-radius: 12px;
-  background: #f8f5ef;
-}
-
-.weather-summary span {
-  color: var(--muted);
-  font-size: .66rem;
-  font-weight: 800;
-}
-
-.weather-summary strong {
-  font-size: .82rem;
-}
-
-.weather-advice-list {
-  display: grid;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.weather-advice {
-  display: grid;
-  grid-template-columns: 26px minmax(0, 1fr);
-  gap: 8px;
-  padding: 11px 12px;
-  border-radius: 13px;
-  background: #f7f4ee;
-}
-
-.weather-advice.check {
-  background: #f5f1e6;
-}
-
-.weather-advice.attention {
-  background: var(--warning-soft);
-}
-
-.weather-advice > span {
-  font-size: 1rem;
-  text-align: center;
-}
-
-.weather-advice > div {
-  display: grid;
-  gap: 3px;
-}
-
-.weather-advice strong {
-  font-size: .8rem;
-}
-
-.weather-advice p {
-  margin: 0;
-  color: var(--muted);
-  font-size: .74rem;
-  line-height: 1.55;
-}
-
-.weather-disclaimer {
-  margin: 10px 0 0;
-  color: var(--muted);
-  font-size: .66rem;
-  line-height: 1.5;
-}
-
-.weather-setting-intro {
-  margin-top: 0;
-}
-
-.weather-location-search {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.weather-location-search .secondary-action {
-  min-width: 92px;
-}
-
-.weather-location-results {
-  display: grid;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.weather-location-results button {
-  display: grid;
-  gap: 2px;
-  width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: #fff;
-  padding: 10px 11px;
-  text-align: left;
-  color: var(--text);
-}
-
-.weather-location-results button:hover {
-  background: var(--sage-soft);
-  border-color: var(--sage);
-}
-
-.weather-location-results strong {
-  font-size: .78rem;
-}
-
-.weather-location-results small {
-  color: var(--muted);
-  font-size: .65rem;
-}
-
-.selected-weather-location {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  padding: 10px 11px;
-  border-radius: 12px;
-  background: var(--sage-soft);
-  color: var(--sage-dark);
-}
-
-.selected-weather-location span {
-  font-size: .66rem;
-}
-
-.selected-weather-location strong {
-  font-size: .78rem;
-}
-
-.toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line-soft);
-}
-
-.toggle-row > span {
-  display: grid;
-  gap: 3px;
-}
-
-.toggle-row strong {
-  font-size: .8rem;
-}
-
-.toggle-row small {
-  color: var(--muted);
-  font-size: .68rem;
-  line-height: 1.45;
-}
-
-.toggle-row input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  flex: 0 0 auto;
-}
-
-.weather-notification-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.weather-notification-row span {
-  color: var(--muted);
-  font-size: .68rem;
-  line-height: 1.45;
-}
-
-@media (max-width: 620px) {
-  .weather-location-search {
-    grid-template-columns: 1fr;
-  }
-
-  .weather-notification-row {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-}
-
-
-/* Phase 2.3 — 기록 수정 / 삭제 */
-.record-manager-list {
-  display: grid;
-}
-
-.record-manager-row {
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: start;
-  padding: 12px 0;
-  border-top: 1px solid var(--line-soft);
-}
-
-.record-manager-row:first-child {
-  border-top: 0;
-  padding-top: 0;
-}
-
-.record-manager-row:last-child {
-  padding-bottom: 0;
-}
-
-.record-manager-icon {
-  width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  border-radius: 10px;
-  background: #f6f3ed;
-  font-size: .9rem;
-}
-
-.record-manager-copy {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-}
-
-.record-manager-copy strong {
-  font-size: .8rem;
-}
-
-.record-manager-copy p {
-  margin: 0;
-  color: var(--muted);
-  font-size: .74rem;
-  line-height: 1.5;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
-
-.record-manager-actions {
-  display: flex;
-  gap: 5px;
-}
-
-.mini-action {
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: #fff;
-  color: var(--sage-dark);
-  padding: 6px 8px;
-  font-size: .68rem;
-  font-weight: 900;
-}
-
-.mini-action:hover {
-  background: var(--sage-soft);
-}
-
-.mini-action.danger {
-  color: #875746;
-}
-
-.mini-action.danger:hover {
-  background: #f8ece6;
-  border-color: #e8cfc3;
-}
-
-.record-editor-card {
-  border-color: rgba(122, 137, 115, .62);
-  box-shadow:
-    0 10px 30px rgba(60, 52, 40, .07),
-    inset 0 0 0 1px rgba(122, 137, 115, .08);
-}
-
-.editor-memo {
-  margin-top: 14px;
-}
-
-.editor-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.editor-actions .secondary-action,
-.editor-actions .editor-save {
-  width: auto;
-  min-width: 92px;
-  margin: 0;
-  padding-inline: 16px;
-}
-
-@media (max-width: 620px) {
-  .record-manager-row {
-    grid-template-columns: 28px minmax(0, 1fr);
-  }
-
-  .record-manager-actions {
-    grid-column: 2;
-    justify-content: flex-start;
-  }
-}
-
 
 /* Phase 2.4 — Cleanup & Preset v2 */
 .quick-check-card {
