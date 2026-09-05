@@ -68,7 +68,7 @@ async function requestRaw(
     )
   } catch {
     throw new Error(
-      'Cloudflare Worker에 연결하지 못했어요. Worker 실행 여부와 API 주소를 확인해 주세요.',
+      '온라인 서버에 연결하지 못했어요. 서버 주소와 연결 상태를 확인해 주세요.',
     )
   }
 
@@ -101,7 +101,7 @@ async function responseError(
   if (response.status === 503) {
     return new Error(
       message ??
-        'Worker 인증 설정이 아직 준비되지 않았어요.',
+        '온라인 서버의 로그인 보호 설정이 아직 준비되지 않았어요.',
     )
   }
 
@@ -175,13 +175,13 @@ export async function checkCloudHealth() {
     )
   } catch {
     throw new Error(
-      'Worker health endpoint에 연결하지 못했어요.',
+      '온라인 서버 상태를 확인하지 못했어요.',
     )
   }
 
   if (!response.ok) {
     throw new Error(
-      `Worker health 확인에 실패했어요. (${response.status})`,
+      `온라인 서버 상태 확인에 실패했어요. (${response.status})`,
     )
   }
 
@@ -201,7 +201,7 @@ export async function checkCloudHealth() {
     !body.database?.ok
   ) {
     throw new Error(
-      'Worker는 응답했지만 D1 연결 상태가 정상이 아니에요.',
+      '온라인 서버는 응답했지만 기록 보관함 연결 상태가 정상이 아니에요.',
     )
   }
 
@@ -218,7 +218,7 @@ export async function readCloudSnapshot() {
 
   if (!payload.data) {
     throw new Error(
-      'D1 snapshot 응답에 data가 없어요.',
+      '온라인 기록 보관함에서 데이터를 읽지 못했어요.',
     )
   }
 

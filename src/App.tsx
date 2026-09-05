@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import BottomNav from './components/BottomNav'
+import DesktopNav from './components/DesktopNav'
 import AlbumPage from './pages/AlbumPage'
 import CalendarPage from './pages/CalendarPage'
 import MorePage from './pages/MorePage'
 import RecordPage from './pages/RecordPage'
 import TodayPage from './pages/TodayPage'
 import { todayISO, toISODate } from './lib/date'
+import { getAppPlatform } from './lib/platform'
 import {
   appRepository,
   getCloudPhotoMode,
@@ -34,6 +36,9 @@ type Tab = 'today' | 'calendar' | 'record' | 'album' | 'more'
 
 
 export default function App() {
+
+  const platform = getAppPlatform()
+  const isDesktop = platform === 'desktop'
 
   const [tab, setTab] = useState<Tab>('today')
   const [recordDate, setRecordDate] = useState(todayISO())
@@ -515,7 +520,7 @@ const deletePhoto = async (id: string) => {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell app-shell-${platform}`}>
       {dataError && (
         <button
           type="button"
@@ -528,18 +533,33 @@ const deletePhoto = async (id: string) => {
         </button>
       )}
 
-      <div className="content-shell">
+      {isDesktop && (
+        <DesktopNav
+          current={tab}
+          onChange={(next) => {
+            if (next === 'record') {
+              openRecord(todayISO())
+            } else {
+              setTab(next)
+            }
+          }}
+        />
+      )}
+
+      <div
+        className={`content-shell content-shell-${platform} content-tab-${tab}`}
+      >
         <span
           className={`repository-mode-dot ${getRepositoryMode()}`}
           title={
             getRepositoryMode() === 'cloud'
-              ? `구조화 기록: D1 · 사진: ${getCloudPhotoMode() === 'r2' ? 'R2' : '로컬'}`
-              : '구조화 기록/사진: 로컬'
+              ? `기록: 온라인 보관함 · 사진: ${getCloudPhotoMode() === 'r2' ? '온라인 보관함' : '이 기기'}`
+              : '기록/사진: 이 기기'
           }
           aria-label={
             getRepositoryMode() === 'cloud'
-              ? `클라우드 기록 모드 · 사진 ${getCloudPhotoMode() === 'r2' ? 'R2' : '로컬'}`
-              : '로컬 기록 모드'
+              ? `온라인 기록 사용 중 · 사진 ${getCloudPhotoMode() === 'r2' ? '온라인 보관함' : '이 기기'}`
+              : '이 기기 기록 사용 중'
           }
         />
         {tab === 'today' && (
@@ -626,13 +646,18 @@ const deletePhoto = async (id: string) => {
         )}
       </div>
 
-      <BottomNav
-        current={tab}
-        onChange={(next) => {
-          if (next === 'record') openRecord(todayISO())
-          else setTab(next)
-        }}
-      />
+      {!isDesktop && (
+        <BottomNav
+          current={tab}
+          onChange={(next) => {
+            if (next === 'record') {
+              openRecord(todayISO())
+            } else {
+              setTab(next)
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -3479,3 +3479,938 @@ select:focus {
   font-size: .61rem;
   line-height: 1.5;
 }
+
+
+/* Phase 5.5 — installable PWA */
+.pwa-install-hero {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 15px;
+  background: #fbfaf7;
+}
+
+.pwa-install-icon {
+  width: 58px;
+  height: 58px;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(67, 58, 47, .10);
+}
+
+.pwa-install-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pwa-install-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.pwa-install-copy > span {
+  color: var(--sage-dark);
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+
+.pwa-install-copy strong {
+  color: var(--text);
+  font-size: .79rem;
+  line-height: 1.35;
+}
+
+.pwa-install-copy small {
+  color: var(--muted);
+  font-size: .64rem;
+  line-height: 1.45;
+}
+
+.pwa-status-badge {
+  min-width: 48px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: var(--sage-soft);
+  color: var(--sage-dark);
+  font-size: .58rem;
+  font-weight: 900;
+}
+
+.pwa-status-badge.installed {
+  background: #e8efe4;
+}
+
+.pwa-install-button {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 10px;
+  border: 1px solid rgba(95, 111, 88, .22);
+  border-radius: 13px;
+  background: var(--sage-soft);
+  color: var(--sage-dark);
+  font: inherit;
+  font-size: .72rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    transform .1s ease,
+    background .12s ease,
+    opacity .12s ease;
+}
+
+.pwa-install-button:hover:not(:disabled) {
+  background: #dfe8da;
+}
+
+.pwa-install-button:active:not(:disabled) {
+  transform: scale(.985);
+}
+
+.pwa-install-button:disabled {
+  cursor: default;
+  opacity: .72;
+}
+
+.pwa-install-note {
+  margin-top: 9px;
+}
+
+@media (max-width: 430px) {
+  .pwa-install-hero {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+
+  .pwa-install-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+  }
+
+  .pwa-status-badge {
+    grid-column: 1 / -1;
+    width: fit-content;
+  }
+}
+
+
+/* Phase 5.5.1 — explicit Mobile / Desktop app shells */
+
+/* Mobile stays intentionally narrow and touch-first even on a wide test window. */
+.app-shell-mobile {
+  padding-bottom: 96px;
+}
+
+.content-shell-mobile {
+  width: min(100%, 820px);
+  margin: 0 auto;
+}
+
+/* Desktop shell: persistent rail + wider working canvas. */
+.app-shell-desktop {
+  min-height: 100vh;
+  padding: 0 0 0 242px;
+}
+
+.content-shell-desktop {
+  width: min(
+    calc(100vw - 242px),
+    1220px
+  );
+  margin: 0 auto;
+}
+
+.app-shell-desktop .page {
+  padding: 34px 34px 56px;
+}
+
+.app-shell-desktop .hero,
+.app-shell-desktop .section-header {
+  margin-bottom: 22px;
+}
+
+.app-shell-desktop .hero h1,
+.app-shell-desktop .section-header h1 {
+  font-size: clamp(
+    2.25rem,
+    4vw,
+    3.25rem
+  );
+}
+
+.app-shell-desktop .card {
+  border-radius: 19px;
+}
+
+.app-shell-desktop .grid-two {
+  gap: 14px;
+}
+
+.app-shell-desktop .photo-placeholder {
+  min-height: 260px;
+}
+
+.app-shell-desktop .today-photo-image {
+  max-height: 440px;
+}
+
+.desktop-nav {
+  position: fixed;
+  z-index: 24;
+  inset: 0 auto 0 0;
+  width: 242px;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  border-right: 1px solid var(--line);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,253,249,.99),
+      rgba(244,241,234,.98)
+    );
+  box-shadow:
+    10px 0 32px
+    rgba(60, 52, 40, .045);
+}
+
+.desktop-brand {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 11px;
+  align-items: center;
+  padding: 5px 6px 18px;
+  border-bottom:
+    1px solid var(--line-soft);
+}
+
+.desktop-brand img {
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  box-shadow:
+    0 4px 12px
+    rgba(67,58,47,.09);
+}
+
+.desktop-brand > div {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.desktop-brand span {
+  color: var(--sage-dark);
+  font-size: .67rem;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+
+.desktop-brand strong {
+  color: var(--text);
+  font-size: .94rem;
+}
+
+.desktop-nav-list {
+  display: grid;
+  gap: 5px;
+  margin-top: 17px;
+}
+
+.desktop-nav-item {
+  width: 100%;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns:
+    38px minmax(0,1fr);
+  gap: 9px;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--muted);
+  padding: 8px 10px;
+  text-align: left;
+  transition:
+    background .12s ease,
+    border-color .12s ease,
+    transform .1s ease;
+}
+
+.desktop-nav-item:hover {
+  background: rgba(255,255,255,.72);
+  border-color: var(--line-soft);
+}
+
+.desktop-nav-item:active {
+  transform: scale(.985);
+}
+
+.desktop-nav-item.active {
+  border-color:
+    rgba(95,111,88,.16);
+  background: var(--sage-soft);
+  color: var(--sage-dark);
+}
+
+.desktop-nav-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background:
+    rgba(255,255,255,.64);
+  font-size: 1.18rem;
+  font-weight: 900;
+}
+
+.desktop-nav-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.desktop-nav-copy strong {
+  font-size: .78rem;
+}
+
+.desktop-nav-copy small {
+  color: var(--muted);
+  font-size: .6rem;
+}
+
+.desktop-nav-item.active
+.desktop-nav-copy small {
+  color: var(--sage-dark);
+  opacity: .76;
+}
+
+.desktop-nav-foot {
+  margin-top: auto;
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: rgba(255,255,255,.58);
+}
+
+.desktop-nav-foot > span {
+  font-size: 1.15rem;
+}
+
+.desktop-nav-foot p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: .61rem;
+  line-height: 1.5;
+}
+
+/* explicit app variant picker */
+.platform-switch {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0,1fr));
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.platform-switch button {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: .67rem;
+  font-weight: 900;
+}
+
+.platform-switch button.active {
+  border-color:
+    rgba(95,111,88,.28);
+  background: var(--sage-soft);
+  color: var(--sage-dark);
+}
+
+/* If somebody deliberately opens /desktop on a small phone,
+   keep it usable rather than overflowing. */
+@media (max-width: 860px) {
+  .app-shell-desktop {
+    padding-left: 76px;
+  }
+
+  .content-shell-desktop {
+    width:
+      calc(100vw - 76px);
+  }
+
+  .desktop-nav {
+    width: 76px;
+    padding-inline: 9px;
+  }
+
+  .desktop-brand {
+    display: flex;
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .desktop-brand > div,
+  .desktop-nav-copy,
+  .desktop-nav-foot {
+    display: none;
+  }
+
+  .desktop-nav-item {
+    display: grid;
+    grid-template-columns: 1fr;
+    place-items: center;
+    min-height: 52px;
+    padding: 6px;
+  }
+
+  .app-shell-desktop .page {
+    padding:
+      24px 16px 40px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .app-shell-desktop .settings-grid {
+    grid-template-columns:
+      repeat(2, minmax(0,1fr));
+  }
+
+  .app-shell-desktop .report-actions {
+    grid-template-columns:
+      auto minmax(300px,1fr) auto;
+  }
+}
+
+
+/* Phase 5.5.2 — plain-language storage glossary */
+.storage-glossary {
+  margin-top: 10px;
+  padding: 10px 11px;
+  border: 1px solid var(--line-soft);
+  border-radius: 13px;
+  background: rgba(255,255,255,.58);
+}
+
+.storage-glossary > span {
+  color: var(--sage-dark);
+  font-size: .6rem;
+  font-weight: 900;
+}
+
+.storage-glossary p {
+  margin: 4px 0 2px;
+  color: var(--text);
+  font-size: .66rem;
+  line-height: 1.5;
+}
+
+.storage-glossary p strong {
+  color: var(--sage-dark);
+}
+
+.storage-glossary small {
+  color: var(--muted);
+  font-size: .58rem;
+  line-height: 1.45;
+}
+
+
+/* Phase 5.5.3 — Desktop UI v2
+   Mobile remains unchanged. */
+
+/* More breathing room on real desktop displays. */
+@media (min-width: 1100px) {
+  .app-shell-desktop {
+    padding-left: 258px;
+  }
+
+  .desktop-nav {
+    width: 258px;
+    padding: 22px 16px;
+  }
+
+  .content-shell-desktop {
+    width: min(
+      calc(100vw - 258px),
+      1380px
+    );
+  }
+
+  .app-shell-desktop .page {
+    padding: 38px 40px 64px;
+  }
+
+  .app-shell-desktop .card {
+    margin-bottom: 0;
+    box-shadow:
+      0 9px 28px
+      rgba(60, 52, 40, .055);
+  }
+
+  .app-shell-desktop .section-header,
+  .app-shell-desktop .hero {
+    margin-bottom: 0;
+  }
+
+  .desktop-brand {
+    grid-template-columns:
+      52px minmax(0, 1fr);
+  }
+
+  .desktop-brand img {
+    width: 52px;
+    height: 52px;
+    border-radius: 15px;
+  }
+
+  .desktop-brand span {
+    font-size: .7rem;
+  }
+
+  .desktop-brand strong {
+    font-size: 1rem;
+  }
+
+  .desktop-nav-list {
+    gap: 6px;
+    margin-top: 20px;
+  }
+
+  .desktop-nav-item {
+    min-height: 62px;
+  }
+
+  /* '기록 추가' behaves like the primary desktop action. */
+  .desktop-nav-item:nth-child(3) {
+    margin-block: 6px 8px;
+    border-color:
+      rgba(86, 101, 80, .15);
+    background:
+      rgba(232, 237, 229, .62);
+  }
+
+  .desktop-nav-item:nth-child(3)
+  .desktop-nav-icon {
+    background: var(--sage-dark);
+    color: white;
+  }
+
+  .desktop-nav-item:nth-child(3):hover,
+  .desktop-nav-item:nth-child(3).active {
+    background: var(--sage-soft);
+    border-color:
+      rgba(86, 101, 80, .28);
+  }
+
+  /* --------------------------------------------------------
+     TODAY — actual dashboard instead of a stretched phone page
+     -------------------------------------------------------- */
+  .content-tab-today > .page {
+    display: grid;
+    grid-template-columns:
+      minmax(0, 1.35fr)
+      minmax(340px, .65fr);
+    grid-template-areas:
+      "hero hero"
+      "weather weather"
+      "photo status"
+      "photo action"
+      "recent recent";
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .content-tab-today > .page > .hero {
+    grid-area: hero;
+    min-height: 82px;
+    padding: 0 2px 4px;
+  }
+
+  .content-tab-today > .page > .weather-card {
+    grid-area: weather;
+    margin: 0;
+  }
+
+  .content-tab-today > .page > .photo-card {
+    grid-area: photo;
+    min-height: 388px;
+    margin: 0;
+  }
+
+  .content-tab-today
+  .today-photo-button,
+  .content-tab-today
+  .photo-placeholder-button {
+    height: 100%;
+    min-height: 366px;
+  }
+
+  .content-tab-today
+  .today-photo-image,
+  .content-tab-today
+  .photo-image-loading.today-photo-image {
+    height: 100%;
+    max-height: none;
+    object-fit: cover;
+  }
+
+  .content-tab-today > .page > .grid-two {
+    grid-area: status;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin: 0;
+  }
+
+  .content-tab-today
+  > .page
+  > .grid-two
+  > .card {
+    min-height: 150px;
+  }
+
+  .content-tab-today > .page > .primary-action {
+    grid-area: action;
+    min-height: 58px;
+    margin: 0;
+    align-self: stretch;
+    border-radius: 16px;
+    font-size: .85rem;
+  }
+
+  .content-tab-today > .page > .card:last-child {
+    grid-area: recent;
+    margin: 0;
+  }
+
+  .content-tab-today .simple-list {
+    display: grid;
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .content-tab-today .list-row {
+    min-height: 58px;
+    border: 1px solid var(--line-soft);
+    border-radius: 13px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,.46);
+  }
+
+  /* Weather has enough width on desktop; remove edge fade feeling. */
+  .content-tab-today .weather-period-dial {
+    gap: 9px;
+    padding-inline: 4px;
+  }
+
+  .content-tab-today .weather-dial-card {
+    flex-basis: 108px;
+  }
+
+  .content-tab-today .weather-dial-card.current {
+    flex-basis: 132px;
+  }
+
+  /* --------------------------------------------------------
+     CALENDAR — summary and weather side-by-side
+     -------------------------------------------------------- */
+  .content-tab-calendar .calendar-page {
+    max-width: 1360px;
+    margin: 0 auto;
+  }
+
+  .content-tab-calendar
+  .calendar-page-header {
+    margin-bottom: 18px;
+  }
+
+  .content-tab-calendar .week-strip {
+    margin-bottom: 14px;
+    gap: 7px;
+  }
+
+  .content-tab-calendar .week-day {
+    min-height: 76px;
+    border-radius: 15px;
+  }
+
+  .content-tab-calendar .daily-swipe-area {
+    display: grid;
+    grid-template-columns:
+      minmax(0, 1.22fr)
+      minmax(330px, .78fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .content-tab-calendar
+  .daily-date-nav {
+    grid-column: 1 / -1;
+    min-height: 76px;
+    margin: 0;
+  }
+
+  .content-tab-calendar
+  .daily-summary-card {
+    grid-column: 1;
+    grid-row: 2 / span 2;
+    margin: 0;
+    min-height: 100%;
+  }
+
+  .content-tab-calendar
+  .daily-swipe-area
+  > .weather-card {
+    grid-column: 2;
+    grid-row: 2;
+    margin: 0;
+  }
+
+  .content-tab-calendar
+  .daily-swipe-area
+  > .primary-action {
+    grid-column: 2;
+    grid-row: 3;
+    margin: 0;
+    min-height: 54px;
+  }
+
+  .content-tab-calendar
+  .swipe-hint {
+    grid-column: 1 / -1;
+    margin-top: -2px;
+  }
+
+  .content-tab-calendar .daily-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .content-tab-calendar .calendar-card {
+    padding: 22px;
+  }
+
+  .content-tab-calendar .calendar-cell {
+    min-height: 118px;
+    padding: 10px;
+  }
+
+  .content-tab-calendar .monthly-icons {
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .content-tab-calendar .monthly-icons span {
+    font-size: .78rem;
+  }
+
+  /* --------------------------------------------------------
+     RECORD — denser but clearer desktop workspace
+     -------------------------------------------------------- */
+  .content-tab-record > .page {
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  .content-tab-record > .page > .section-header {
+    margin-bottom: 18px;
+  }
+
+  .content-tab-record .quick-check-card {
+    display: grid;
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    gap: 0 22px;
+  }
+
+  .content-tab-record
+  .quick-check-card
+  > .card-title {
+    grid-column: 1 / -1;
+  }
+
+  .content-tab-record
+  .preset-check-group {
+    padding-block: 15px;
+  }
+
+  .content-tab-record
+  .preset-toggle-wrap {
+    gap: 7px;
+  }
+
+  .content-tab-record
+  .preset-toggle {
+    min-height: 42px;
+  }
+
+  .content-tab-record
+  .detail-launcher-grid {
+    grid-template-columns:
+      repeat(4, minmax(0, 1fr));
+  }
+
+  .content-tab-record
+  .detail-launcher {
+    min-height: 82px;
+  }
+
+  .content-tab-record
+  .record-manager-list {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .content-tab-record
+  .record-manager-row {
+    min-height: 82px;
+  }
+
+  .content-tab-record
+  .form-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  /* --------------------------------------------------------
+     ALBUM — desktop gallery rather than oversized phone tiles
+     -------------------------------------------------------- */
+  .content-tab-album .album-page {
+    max-width: 1360px;
+    margin: 0 auto;
+    padding-bottom: 64px;
+  }
+
+  .content-tab-album
+  .album-upload-card {
+    grid-template-columns:
+      minmax(360px, .72fr)
+      minmax(0, 1.28fr);
+    align-items: center;
+    gap: 18px;
+  }
+
+  .content-tab-album
+  .album-upload-help,
+  .content-tab-album
+  .inline-message {
+    grid-column: 2;
+  }
+
+  .content-tab-album .album-grid {
+    grid-template-columns:
+      repeat(4, minmax(0, 1fr));
+    gap: 13px;
+  }
+
+  .content-tab-album
+  .album-date-group {
+    gap: 11px;
+  }
+
+  .content-tab-album
+  .album-photo {
+    border-radius: 16px;
+    transition:
+      transform .12s ease,
+      box-shadow .12s ease,
+      border-color .12s ease;
+  }
+
+  .content-tab-album
+  .album-photo:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 10px 24px
+      rgba(60,52,40,.08);
+  }
+
+  .content-tab-album
+  .album-photo-body {
+    padding: 11px;
+  }
+
+  /* --------------------------------------------------------
+     MORE / STATS / SETTINGS — use desktop width
+     -------------------------------------------------------- */
+  .content-tab-more > .page {
+    max-width: 1320px;
+    margin: 0 auto;
+  }
+
+  .content-tab-more .more-header {
+    margin-bottom: 16px;
+  }
+
+  .content-tab-more .more-mode-toggle {
+    position: sticky;
+    top: 12px;
+    z-index: 8;
+    backdrop-filter: blur(12px);
+    box-shadow:
+      0 6px 18px
+      rgba(60,52,40,.05);
+  }
+
+  .content-tab-more .stats-summary-grid {
+    grid-template-columns:
+      repeat(4, minmax(0, 1fr));
+  }
+
+  .content-tab-more
+  .stats-summary-grid-three {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+
+  .content-tab-more .settings-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .content-tab-more
+  .cloud-lab-card,
+  .content-tab-more
+  .backup-card {
+    align-self: start;
+  }
+}
+
+/* Mid-size desktop / small laptop: keep the desktop identity,
+   but drop to three album columns and a softer dashboard split. */
+@media (min-width: 861px) and (max-width: 1199px) {
+  .content-tab-today > .page {
+    grid-template-columns:
+      minmax(0, 1.1fr)
+      minmax(300px, .9fr);
+  }
+
+  .content-tab-album .album-grid {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+
+  .content-tab-record
+  .record-manager-list {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,8 +1,20 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Card from '../components/Card'
 import StatsPage from './StatsPage'
 import EvaluationHistoryPage from './EvaluationHistoryPage'
 import { buildReport } from '../lib/report'
+import {
+  canInstallPwa,
+  installPwa,
+  isIosBrowser,
+  isPwaStandalone,
+  onPwaStateChange,
+} from '../lib/pwa'
+import {
+  getAppPlatform,
+  openPlatform,
+  platformLabel,
+} from '../lib/platform'
 import {
   addDays,
   parseISODate,
@@ -105,6 +117,38 @@ export default function MorePage({
     useState(false)
   const [cloudStatus, setCloudStatus] =
     useState('')
+
+  const appPlatform =
+    getAppPlatform()
+  const appPlatformLabel =
+    platformLabel(appPlatform)
+
+  const [pwaState, setPwaState] =
+    useState(() => ({
+      standalone:
+        isPwaStandalone(),
+      installable:
+        canInstallPwa(),
+      ios:
+        isIosBrowser(),
+    }))
+
+  useEffect(() => {
+    const refreshPwaState = () => {
+      setPwaState({
+        standalone:
+          isPwaStandalone(),
+        installable:
+          canInstallPwa(),
+        ios:
+          isIosBrowser(),
+      })
+    }
+
+    return onPwaStateChange(
+      refreshPwaState,
+    )
+  }, [])
 
   const report = useMemo(() => {
     try {
@@ -284,7 +328,7 @@ export default function MorePage({
         await readCloudSnapshot()
 
       setCloudStatus(
-        `연결 성공 · API ${health.version ?? '?'} · D1 schema ${health.database?.schemaVersion ?? '?'} · 급여 ${snapshot.feedingLogs.length}건 / 체중 ${snapshot.weightLogs.length}건`,
+        `연결 성공 · 서버 v${health.version ?? '?'} · 기록 보관함 v${health.database?.schemaVersion ?? '?'} · 급여 ${snapshot.feedingLogs.length}건 / 체중 ${snapshot.weightLogs.length}건`,
       )
     } catch (error) {
       setCloudStatus(
@@ -300,7 +344,7 @@ export default function MorePage({
   const uploadLocalSnapshot = async () => {
     const confirmed =
       window.confirm(
-        '현재 이 브라우저의 로컬 구조화 기록으로 D1의 구조화 기록 전체를 교체합니다.\n\n사진은 이번 단계에서 업로드하지 않습니다. 계속할까요?',
+        '현재 이 기기에 있는 기록으로 온라인 기록 보관함의 전체 기록을 교체합니다.\n\n사진은 이번 작업에 포함하지 않습니다. 계속할까요?',
       )
 
     if (!confirmed) return
@@ -355,13 +399,13 @@ export default function MorePage({
         )
 
       setCloudStatus(
-        `R2 사진 메타 ${cloudPhotos.length}장 · ${(totalBytes / 1024 / 1024).toFixed(1)} MiB`,
+        `온라인 사진 ${cloudPhotos.length}장 · ${(totalBytes / 1024 / 1024).toFixed(1)} MiB`,
       )
     } catch (error) {
       setCloudStatus(
         error instanceof Error
           ? error.message
-          : 'R2 사진 상태 확인에 실패했어요.',
+          : '온라인 사진 상태 확인에 실패했어요.',
       )
     } finally {
       setCloudBusy(false)
@@ -381,7 +425,7 @@ export default function MorePage({
 
     const confirmed =
       window.confirm(
-        `현재 브라우저의 사진 ${localPhotos.length}장을 R2로 업로드합니다.\n\n같은 ID의 R2 사진은 교체되고, 모든 업로드가 성공한 뒤 로컬에 없는 R2 사진은 정리합니다. 로컬 원본은 삭제하지 않습니다. 계속할까요?`,
+        `현재 이 기기의 사진 ${localPhotos.length}장을 온라인 사진 보관함으로 복사합니다.\n\n같은 사진이 이미 있으면 최신 내용으로 교체하고, 모든 복사가 성공한 뒤 온라인 보관함의 불필요한 항목을 정리합니다. 이 기기의 원본은 삭제하지 않습니다. 계속할까요?`,
       )
 
     if (!confirmed) return
@@ -422,7 +466,7 @@ export default function MorePage({
       }
 
       setCloudStatus(
-        `R2 업로드 중 · ${entries.length}장`,
+        `온라인 사진 보관함으로 복사 중 · ${entries.length}장`,
       )
 
       await replaceCloudPhotos(
@@ -433,13 +477,13 @@ export default function MorePage({
         await readCloudPhotos()
 
       setCloudStatus(
-        `R2 업로드 완료 · ${verified.length}장 확인 · 로컬 사진은 그대로 보존됨`,
+        `사진 복사 완료 · 온라인 ${verified.length}장 확인 · 이 기기 원본은 그대로 보존됨`,
       )
     } catch (error) {
       setCloudStatus(
         error instanceof Error
           ? error.message
-          : '사진 R2 업로드에 실패했어요.',
+          : '온라인 사진 보관함으로 복사하지 못했어요.',
       )
     } finally {
       setCloudBusy(false)
@@ -454,7 +498,7 @@ export default function MorePage({
     ) {
       setCloudStatus(
         nextMode === 'r2'
-          ? '이미 R2 사진 모드를 사용 중이에요.'
+          ? '이미 온라인 사진 보관함을 사용 중이에요.'
           : '이미 로컬 사진 모드를 사용 중이에요.',
       )
       return
@@ -479,7 +523,7 @@ export default function MorePage({
           cloudPhotos.length === 0
         ) {
           setCloudStatus(
-            '로컬 사진이 있는데 R2가 비어 있어요. 먼저 ‘로컬 사진 → R2’를 실행해 주세요.',
+            '이 기기에 사진이 있는데 온라인 사진 보관함이 비어 있어요. 먼저 ‘이 기기 사진 → 온라인 보관함’을 실행해 주세요.',
           )
           setCloudBusy(false)
           return
@@ -488,7 +532,7 @@ export default function MorePage({
         setCloudPhotoMode('r2')
 
         window.alert(
-          `R2 사진 모드로 전환합니다. R2 사진 ${cloudPhotos.length}장을 사용하고, 기존 IndexedDB 사진은 백업으로 그대로 남겨둡니다.`,
+          `온라인 사진 보관함으로 전환합니다. 온라인 사진 ${cloudPhotos.length}장을 사용하고, 이 기기의 기존 사진은 백업으로 그대로 남겨둡니다.`,
         )
 
         window.location.reload()
@@ -496,7 +540,7 @@ export default function MorePage({
         setCloudStatus(
           error instanceof Error
             ? error.message
-            : 'R2 사진 모드로 전환하지 못했어요.',
+            : '온라인 사진 보관함으로 전환하지 못했어요.',
         )
         setCloudBusy(false)
       }
@@ -507,7 +551,7 @@ export default function MorePage({
     setCloudPhotoMode('local')
 
     window.alert(
-      '사진을 다시 이 브라우저의 IndexedDB에서 읽습니다. R2 사진은 삭제하지 않아요.',
+      '사진을 다시 이 기기의 저장소에서 읽습니다. 온라인 사진은 삭제하지 않아요.',
     )
 
     window.location.reload()
@@ -521,7 +565,7 @@ export default function MorePage({
     ) {
       setCloudStatus(
         nextMode === 'cloud'
-          ? '이미 클라우드 모드를 사용 중이에요.'
+          ? '이미 온라인 기록 보관함을 사용 중이에요.'
           : '이미 로컬 모드를 사용 중이에요.',
       )
       return
@@ -537,7 +581,7 @@ export default function MorePage({
         setRepositoryMode('cloud')
 
         window.alert(
-          `클라우드 모드로 전환합니다. 사진은 ${getCloudPhotoMode() === 'r2' ? 'R2' : '이 브라우저의 로컬 저장소'}를 사용해요.`,
+          `온라인 기록 보관함으로 전환합니다. 사진은 ${getCloudPhotoMode() === 'r2' ? '온라인 보관함' : '이 기기 저장소'}를 사용해요.`,
         )
 
         window.location.reload()
@@ -545,7 +589,7 @@ export default function MorePage({
         setCloudStatus(
           error instanceof Error
             ? error.message
-            : '클라우드 모드로 전환하지 못했어요.',
+            : '온라인 기록 보관함으로 전환하지 못했어요.',
         )
         setCloudBusy(false)
       }
@@ -556,10 +600,58 @@ export default function MorePage({
     setRepositoryMode('local')
 
     window.alert(
-      '로컬 모드로 전환합니다. 앱을 다시 불러올게요.',
+      '이 기기 기록으로 전환합니다. 앱을 다시 불러올게요.',
     )
 
     window.location.reload()
+  }
+
+  const requestPwaInstall = async () => {
+    if (pwaState.standalone) {
+      flash(
+        '이미 앱으로 설치되어 있어요.',
+      )
+      return
+    }
+
+    if (pwaState.installable) {
+      const outcome =
+        await installPwa()
+
+      if (outcome === 'accepted') {
+        flash(
+          'ERI DI-ERY를 설치했어요. 🦎',
+        )
+      } else if (
+        outcome === 'dismissed'
+      ) {
+        flash(
+          '설치를 취소했어요.',
+        )
+      }
+
+      setPwaState({
+        standalone:
+          isPwaStandalone(),
+        installable:
+          canInstallPwa(),
+        ios:
+          isIosBrowser(),
+      })
+
+      return
+    }
+
+    if (pwaState.ios) {
+      window.alert(
+        'iPhone/iPad에서는 Safari로 eri.issssm.com을 연 뒤, 공유 버튼 → “홈 화면에 추가”를 선택해 주세요.',
+      )
+      return
+    }
+
+    window.alert(
+      '브라우저 주소창의 설치 아이콘 또는 메뉴의 “앱 설치 / 홈 화면에 추가”를 사용해 주세요. 이미 설치되어 있으면 설치 버튼이 나타나지 않을 수 있어요.',
+    )
   }
 
   const requestNotificationPermission = async () => {
@@ -755,6 +847,108 @@ export default function MorePage({
             </div>
           </Card>
 
+          <Card title="앱 버전 · 설치" icon="📲">
+            <div className="pwa-install-hero">
+              <div className="pwa-install-icon">
+                <img
+                  src={
+                    appPlatform === 'mobile'
+                      ? '/icons/icon-mobile-192.png'
+                      : '/icons/icon-desktop-192.png'
+                  }
+                  alt=""
+                  aria-hidden="true"
+                />
+              </div>
+
+              <div className="pwa-install-copy">
+                <span>
+                  ERI DI-ERY · {appPlatformLabel}
+                </span>
+                <strong>
+                  {appPlatform === 'mobile'
+                    ? '손가락으로 빠르게 기록하는 휴대폰 앱'
+                    : '넓은 화면으로 관리하는 컴퓨터 앱'}
+                </strong>
+                <small>
+                  두 앱은 화면 구조만 다르고 같은 온라인 기록과 사진을 사용해요.
+                </small>
+              </div>
+
+              <span
+                className={`pwa-status-badge ${
+                  pwaState.standalone
+                    ? 'installed'
+                    : 'ready'
+                }`}
+              >
+                {pwaState.standalone
+                  ? '설치됨'
+                  : appPlatform === 'mobile'
+                    ? 'MOBILE'
+                    : 'DESKTOP'}
+              </span>
+            </div>
+
+            <div
+              className="platform-switch"
+              aria-label="앱 버전 선택"
+            >
+              <button
+                type="button"
+                className={
+                  appPlatform === 'mobile'
+                    ? 'active'
+                    : ''
+                }
+                onClick={() =>
+                  openPlatform('mobile')
+                }
+              >
+                📱 휴대폰 버전
+              </button>
+
+              <button
+                type="button"
+                className={
+                  appPlatform === 'desktop'
+                    ? 'active'
+                    : ''
+                }
+                onClick={() =>
+                  openPlatform('desktop')
+                }
+              >
+                🖥️ 컴퓨터 버전
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className="pwa-install-button"
+              disabled={
+                pwaState.standalone
+              }
+              onClick={() =>
+                void requestPwaInstall()
+              }
+            >
+              {pwaState.standalone
+                ? `✓ ${appPlatformLabel} 앱 설치됨`
+                : pwaState.installable
+                  ? `📲 ${appPlatformLabel} 앱 설치`
+                  : pwaState.ios
+                    ? ' iPhone/iPad 설치 방법'
+                    : '📌 설치 방법 보기'}
+            </button>
+
+            <p className="setting-help pwa-install-note">
+              휴대폰 앱은 <strong>/mobile</strong>,
+              컴퓨터 앱은 <strong>/desktop</strong>에서 각각 별도 PWA로 설치돼요.
+              어느 쪽에서 기록해도 서버 데이터는 하나입니다.
+            </p>
+          </Card>
+
           <Card title="급여 일정" icon="🍚">
             <div className="settings-grid">
               <label className="field">
@@ -873,7 +1067,7 @@ export default function MorePage({
                 브라우저 알림 허용
               </button>
               <span>
-                지금은 앱을 열었을 때 확인하고, Cloudflare 배포 뒤에는 아침 자동 알림으로 연결할 예정입니다.
+                지금은 앱을 열었을 때 확인하고, 다음 단계에서는 아침 자동 알림으로 연결할 예정입니다.
               </span>
             </div>
 
@@ -883,15 +1077,15 @@ export default function MorePage({
             </p>
           </Card>
 
-          <Card title="클라우드 데이터 실험실" icon="☁️">
+          <Card title="온라인 저장소 관리" icon="☁️">
             <div className="cloud-lab-head">
               <div>
                 <span>Phase 5.4</span>
                 <strong>
-                  D1 + R2 + Access
+                  기록 + 사진 + 로그인 보호
                 </strong>
                 <small>
-                  실제 도메인에서는 Cloudflare Access 로그인 뒤 같은 주소의 API를 사용해요.
+                  에리 기록과 사진을 온라인에 보관하고, 로그인한 사용자만 접근할 수 있어요.
                 </small>
               </div>
 
@@ -904,9 +1098,23 @@ export default function MorePage({
               </span>
             </div>
 
+            <div className="storage-glossary">
+              <span>
+                쉽게 말하면
+              </span>
+              <p>
+                <strong>기록 보관함</strong> = D1 ·
+                <strong>사진 보관함</strong> = R2 ·
+                <strong>로그인 보호</strong> = Access
+              </p>
+              <small>
+                기술 이름은 문제를 확인할 때만 보면 돼요.
+              </small>
+            </div>
+
             <div className="cloud-lab-fields">
               <label>
-                <span>Worker API 주소</span>
+                <span>서버 주소 <small>· 기술명: Worker API</small></span>
                 <input
                   type="url"
                   value={cloudApiBaseDraft}
@@ -921,15 +1129,15 @@ export default function MorePage({
 
               <label>
                 <span>
-                  개발용 API 토큰
+                  개발용 연결 암호
                   <small>
-                    · localhost / 비상 테스트 전용
+                    · 기술명: API token · localhost 테스트 전용
                   </small>
                 </span>
                 <input
                   type="password"
                   value={cloudTokenDraft}
-                  placeholder="Access 배포 후에는 비워도 됨"
+                  placeholder="실서비스에서는 비워도 됨"
                   autoComplete="off"
                   onChange={(event) =>
                     setCloudTokenDraft(
@@ -958,18 +1166,18 @@ export default function MorePage({
                   void uploadLocalSnapshot()
                 }
               >
-                ⬆️ 로컬 기록 → D1
+                ⬆️ 이 기기 기록 → 온라인 보관함
               </button>
             </div>
 
             <div className="cloud-photo-panel">
               <div className="cloud-photo-panel-head">
                 <div>
-                  <span>사진 저장소</span>
+                  <span>사진 보관 위치</span>
                   <strong>
                     {getCloudPhotoMode() === 'r2'
-                      ? 'Cloudflare R2'
-                      : '이 브라우저 IndexedDB'}
+                      ? '온라인 사진 보관함'
+                      : '이 기기 사진 저장소'}
                   </strong>
                 </div>
 
@@ -977,7 +1185,7 @@ export default function MorePage({
                   className={`cloud-photo-badge ${getCloudPhotoMode()}`}
                 >
                   {getCloudPhotoMode() === 'r2'
-                    ? 'R2'
+                    ? 'ONLINE'
                     : 'LOCAL'}
                 </span>
               </div>
@@ -990,7 +1198,7 @@ export default function MorePage({
                     void inspectCloudPhotos()
                   }
                 >
-                  🖼️ R2 사진 확인
+                  🖼️ 온라인 사진 확인
                 </button>
 
                 <button
@@ -1000,7 +1208,7 @@ export default function MorePage({
                     void uploadLocalPhotos()
                   }
                 >
-                  ⬆️ 로컬 사진 → R2
+                  ⬆️ 이 기기 사진 → 온라인 보관함
                 </button>
               </div>
 
@@ -1019,7 +1227,7 @@ export default function MorePage({
                     )
                   }
                 >
-                  브라우저 사진
+                  이 기기 사진
                 </button>
 
                 <button
@@ -1036,13 +1244,13 @@ export default function MorePage({
                     )
                   }
                 >
-                  R2 사진
+                  온라인 사진
                 </button>
               </div>
 
               <p className="cloud-photo-note">
-                R2로 옮겨도 기존 IndexedDB 원본은 자동 삭제하지 않아요.
-                먼저 복사 → 확인 → R2 전환 순서로 진행합니다.
+                온라인으로 복사해도 이 기기의 기존 사진 원본은 자동 삭제하지 않아요.
+                먼저 복사 → 확인 → 온라인 사진 전환 순서로 진행합니다.
               </p>
             </div>
 
@@ -1061,7 +1269,7 @@ export default function MorePage({
                   )
                 }
               >
-                로컬 모드
+                이 기기 기록
               </button>
 
               <button
@@ -1078,7 +1286,7 @@ export default function MorePage({
                   )
                 }
               >
-                클라우드 모드
+                온라인 기록
               </button>
             </div>
 
@@ -1089,12 +1297,12 @@ export default function MorePage({
             )}
 
             <div className="cloud-lab-warning">
-              <strong>개발 단계 인증</strong>
+              <strong>개발용 연결 방식</strong>
               <p>
-                localhost 테스트에서는 API_TOKEN을 현재 탭의
+                localhost 테스트에서는 개발용 연결 암호를 현재 탭의
                 sessionStorage에만 넣어 사용할 수 있습니다.
-                실제 eri.issssm.com에서는 Cloudflare Access가 인증을 처리하므로
-                브라우저에 API 토큰을 넣지 않습니다.
+                실제 eri.issssm.com에서는 로그인 보호 기능이 인증을 처리하므로
+                브라우저에 별도 연결 암호를 넣지 않습니다.
               </p>
             </div>
           </Card>
@@ -1105,7 +1313,7 @@ export default function MorePage({
                 <span>서버 이전 전 안전장치</span>
                 <strong>기록 + 사진을 한 번에 보관</strong>
                 <small>
-                  D1/R2 연결 전에도 언제든 로컬 데이터를 꺼내둘 수 있어요.
+                  온라인 저장소 연결 여부와 상관없이 언제든 데이터를 백업할 수 있어요.
                 </small>
               </div>
               <span className="backup-hero-badge">
