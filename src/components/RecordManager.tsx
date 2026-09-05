@@ -65,7 +65,9 @@ const amountLabels = [
 const groupLabels: Record<PresetSelection['group'], string> = {
   activity: '활동성',
   location: '위치',
-  health: '건강',
+  shedding: '탈피',
+  body: '신체 관찰',
+  health: '건강 · 이전 형식',
 }
 
 function shortDate(date: string) {
@@ -645,7 +647,9 @@ function PresetEditor({
           >
             <option value="activity">활동성</option>
             <option value="location">위치</option>
-            <option value="health">건강</option>
+            <option value="shedding">탈피</option>
+            <option value="body">신체 관찰</option>
+            <option value="health">건강 · 이전 형식</option>
           </select>
         </label>
       </div>

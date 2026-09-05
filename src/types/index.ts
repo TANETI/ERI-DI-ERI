@@ -23,10 +23,17 @@ export type TmiLog = {
   text: string
 }
 
+export type PresetGroup =
+  | 'activity'
+  | 'location'
+  | 'shedding'
+  | 'body'
+  | 'health' // 이전 버전 호환용
+
 export type PresetSelection = {
   id: string
   date: string
-  group: 'activity' | 'location' | 'health'
+  group: PresetGroup
   label: string
 }
 

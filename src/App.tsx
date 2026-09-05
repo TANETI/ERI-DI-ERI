@@ -11,6 +11,7 @@ import type {
   AppSettings,
   DefecationLog,
   FeedingLog,
+  PresetGroup,
   PresetSelection,
   TmiLog,
   WeightLog,
@@ -18,8 +19,9 @@ import type {
 
 type Tab = 'today' | 'calendar' | 'record' | 'album' | 'more'
 
+store.initialize()
+
 export default function App() {
-  store.initialize()
 
   const [tab, setTab] = useState<Tab>('today')
   const [recordDate, setRecordDate] = useState(toISODate(new Date()))
@@ -138,6 +140,15 @@ const deleteTmi = (id: string) => {
 
 const addPreset = (log: PresetSelection) => {
   setPresetSelections((prev) => {
+    const duplicate = prev.some(
+      (item) =>
+        item.date === log.date &&
+        item.group === log.group &&
+        item.label === log.label,
+    )
+
+    if (duplicate) return prev
+
     const next = [log, ...prev]
     store.savePresetSelections(next)
     return next
@@ -145,17 +156,51 @@ const addPreset = (log: PresetSelection) => {
 }
 
 const updatePreset = (log: PresetSelection) => {
-  const next = presetSelections.map((item) =>
-    item.id === log.id ? log : item,
-  )
-  setPresetSelections(next)
-  store.savePresetSelections(next)
+  setPresetSelections((prev) => {
+    const next = prev.map((item) => (item.id === log.id ? log : item))
+    store.savePresetSelections(next)
+    return next
+  })
 }
 
 const deletePreset = (id: string) => {
-  const next = presetSelections.filter((item) => item.id !== id)
-  setPresetSelections(next)
-  store.savePresetSelections(next)
+  setPresetSelections((prev) => {
+    const next = prev.filter((item) => item.id !== id)
+    store.savePresetSelections(next)
+    return next
+  })
+}
+
+const setPresetGroup = (
+  date: string,
+  group: PresetGroup,
+  labels: string[],
+) => {
+  setPresetSelections((prev) => {
+    const existing = prev.filter(
+      (item) => item.date === date && item.group === group,
+    )
+
+    const preserved = prev.filter(
+      (item) => !(item.date === date && item.group === group),
+    )
+
+    const nextGroup = labels.map((label) => {
+      const found = existing.find((item) => item.label === label)
+      return (
+        found ?? {
+          id: crypto.randomUUID(),
+          date,
+          group,
+          label,
+        }
+      )
+    })
+
+    const next = [...preserved, ...nextGroup]
+    store.savePresetSelections(next)
+    return next
+  })
 }
 
 const addDefecation = (log: DefecationLog) => {
@@ -235,6 +280,7 @@ const deleteDefecation = (id: string) => {
             onAddPreset={addPreset}
             onUpdatePreset={updatePreset}
             onDeletePreset={deletePreset}
+            onSetPresetGroup={setPresetGroup}
             onAddDefecation={addDefecation}
             onUpdateDefecation={updateDefecation}
             onDeleteDefecation={deleteDefecation}

@@ -120,6 +120,7 @@ export function weatherLocationFromSettings(
 export async function fetchWeatherForDate(
   date: string,
   location: WeatherLocation,
+  signal?: AbortSignal,
 ): Promise<WeatherSnapshot> {
   const cached = readCache(date, location.latitude, location.longitude)
   if (cached) return cached
@@ -145,7 +146,7 @@ export async function fetchWeatherForDate(
   if (!isPast) hourly.push('precipitation_probability')
   url.searchParams.set('hourly', hourly.join(','))
 
-  const response = await fetch(url)
+  const response = await fetch(url, { signal })
   if (!response.ok) {
     throw new Error(
       isPast

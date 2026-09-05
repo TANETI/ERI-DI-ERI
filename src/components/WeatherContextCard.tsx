@@ -33,26 +33,27 @@ export default function WeatherContextCard({
   const [error, setError] = useState('')
 
   useEffect(() => {
-    let cancelled = false
+    const controller = new AbortController()
 
     if (!location) {
       setSnapshot(null)
       setError('')
-      return
+      setLoading(false)
+      return () => controller.abort()
     }
 
     setLoading(true)
     setError('')
 
-    fetchWeatherForDate(date, location)
+    fetchWeatherForDate(date, location, controller.signal)
       .then(async (result) => {
-        if (cancelled) return
+        if (controller.signal.aborted) return
         setSnapshot(result)
         const advices = buildWeatherAdvice(result)
         await maybeNotifyWeatherAdvice(result, advices, settings)
       })
       .catch((reason: unknown) => {
-        if (cancelled) return
+        if (controller.signal.aborted) return
         setSnapshot(null)
         setError(
           reason instanceof Error
@@ -61,12 +62,10 @@ export default function WeatherContextCard({
         )
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       })
 
-    return () => {
-      cancelled = true
-    }
+    return () => controller.abort()
   }, [
     date,
     location?.label,
