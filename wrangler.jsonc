@@ -1,0 +1,19 @@
+﻿{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "eri-di-ery-api",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2026-09-05",
+
+  "vars": {
+    "ALLOWED_ORIGIN": "http://localhost:5173"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "eri-di-ery",
+      "database_id": "c9f59e8c-680f-46dc-8707-9561d68caf2a",
+      "migrations_dir": "worker/migrations"
+    }
+  ]
+}

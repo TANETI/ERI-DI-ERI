@@ -6,7 +6,10 @@ import MorePage from './pages/MorePage'
 import RecordPage from './pages/RecordPage'
 import TodayPage from './pages/TodayPage'
 import { todayISO, toISODate } from './lib/date'
-import { appRepository } from './data'
+import {
+  appRepository,
+  getRepositoryMode,
+} from './data'
 import { defaultSettings } from './lib/defaultSettings'
 import {
   commitScheduleChanges,
@@ -501,7 +504,11 @@ const deletePhoto = async (id: string) => {
       <div className="app-bootstrap">
         <span aria-hidden="true">🦎</span>
         <strong>에리의 기록을 불러오는 중…</strong>
-        <small>ERI DI-ERY</small>
+        <small>
+          ERI DI-ERY · {getRepositoryMode() === 'cloud'
+            ? 'CLOUD'
+            : 'LOCAL'}
+        </small>
       </div>
     )
   }
@@ -521,6 +528,19 @@ const deletePhoto = async (id: string) => {
       )}
 
       <div className="content-shell">
+        <span
+          className={`repository-mode-dot ${getRepositoryMode()}`}
+          title={
+            getRepositoryMode() === 'cloud'
+              ? '구조화 기록: D1 · 사진: 로컬'
+              : '구조화 기록/사진: 로컬'
+          }
+          aria-label={
+            getRepositoryMode() === 'cloud'
+              ? '클라우드 구조화 기록 모드'
+              : '로컬 기록 모드'
+          }
+        />
         {tab === 'today' && (
           <TodayPage
             settings={settings}

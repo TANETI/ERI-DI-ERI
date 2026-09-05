@@ -238,7 +238,10 @@ export default function RecordManager({
         ) : (
           <div className="record-manager-list">
             {items.map((item) => (
-              <div className="record-manager-row" key={item.key}>
+              <div
+                className={`record-manager-row record-kind-${item.kind}`}
+                key={item.key}
+              >
                 <span className="record-manager-icon" aria-hidden="true">
                   {item.icon}
                 </span>
@@ -256,6 +259,7 @@ export default function RecordManager({
                       setEditing({ kind: item.kind, id: item.id } as EditTarget)
                     }
                   >
+                    <span aria-hidden="true">✎</span>
                     수정
                   </button>
                   <button
@@ -268,6 +272,7 @@ export default function RecordManager({
                       } as EditTarget)
                     }
                   >
+                    <span aria-hidden="true">⌫</span>
                     삭제
                   </button>
                 </div>

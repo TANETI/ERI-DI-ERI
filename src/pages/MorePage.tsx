@@ -15,6 +15,18 @@ import {
   downloadStructuredJson,
   restoreBackupFile,
 } from '../lib/backup'
+import {
+  checkCloudHealth,
+  cloudflareRepository,
+  getCloudApiBase,
+  getCloudDevToken,
+  getRepositoryMode,
+  localRepository,
+  readCloudSnapshot,
+  setCloudApiBase,
+  setCloudDevToken,
+  setRepositoryMode,
+} from '../data'
 import type {
   AppSettings,
   DefecationLog,
@@ -80,6 +92,15 @@ export default function MorePage({
   const [reportEnd, setReportEnd] = useState(today)
   const [message, setMessage] = useState('')
   const [backupBusy, setBackupBusy] = useState(false)
+
+  const [cloudApiBaseDraft, setCloudApiBaseDraft] =
+    useState(getCloudApiBase())
+  const [cloudTokenDraft, setCloudTokenDraft] =
+    useState(getCloudDevToken())
+  const [cloudBusy, setCloudBusy] =
+    useState(false)
+  const [cloudStatus, setCloudStatus] =
+    useState('')
 
   const report = useMemo(() => {
     try {
@@ -234,6 +255,131 @@ export default function MorePage({
       )
       setBackupBusy(false)
     }
+  }
+
+  const saveCloudConnectionDrafts = () => {
+    setCloudApiBase(
+      cloudApiBaseDraft,
+    )
+    setCloudDevToken(
+      cloudTokenDraft,
+    )
+  }
+
+  const testCloudConnection = async () => {
+    setCloudBusy(true)
+    setCloudStatus('')
+
+    try {
+      saveCloudConnectionDrafts()
+
+      const health =
+        await checkCloudHealth()
+
+      const snapshot =
+        await readCloudSnapshot()
+
+      setCloudStatus(
+        `연결 성공 · API ${health.version ?? '?'} · D1 schema ${health.database?.schemaVersion ?? '?'} · 급여 ${snapshot.feedingLogs.length}건 / 체중 ${snapshot.weightLogs.length}건`,
+      )
+    } catch (error) {
+      setCloudStatus(
+        error instanceof Error
+          ? error.message
+          : '클라우드 연결 확인에 실패했어요.',
+      )
+    } finally {
+      setCloudBusy(false)
+    }
+  }
+
+  const uploadLocalSnapshot = async () => {
+    const confirmed =
+      window.confirm(
+        '현재 이 브라우저의 로컬 구조화 기록으로 D1의 구조화 기록 전체를 교체합니다.\n\n사진은 이번 단계에서 업로드하지 않습니다. 계속할까요?',
+      )
+
+    if (!confirmed) return
+
+    setCloudBusy(true)
+    setCloudStatus('')
+
+    try {
+      saveCloudConnectionDrafts()
+
+      const localData =
+        await localRepository
+          .getStructuredData()
+
+      await cloudflareRepository
+        .replaceStructuredData(
+          localData,
+        )
+
+      const verified =
+        await readCloudSnapshot()
+
+      setCloudStatus(
+        `업로드 완료 · 급여 ${verified.feedingLogs.length}건 / 체중 ${verified.weightLogs.length}건 / TMI ${verified.tmiLogs.length}건 / 배변 ${verified.defecationLogs.length}건`,
+      )
+    } catch (error) {
+      setCloudStatus(
+        error instanceof Error
+          ? error.message
+          : '로컬 기록 업로드에 실패했어요.',
+      )
+    } finally {
+      setCloudBusy(false)
+    }
+  }
+
+  const activateRepositoryMode = async (
+    nextMode: 'local' | 'cloud',
+  ) => {
+    if (
+      nextMode === getRepositoryMode()
+    ) {
+      setCloudStatus(
+        nextMode === 'cloud'
+          ? '이미 클라우드 모드를 사용 중이에요.'
+          : '이미 로컬 모드를 사용 중이에요.',
+      )
+      return
+    }
+
+    if (nextMode === 'cloud') {
+      setCloudBusy(true)
+
+      try {
+        saveCloudConnectionDrafts()
+        await readCloudSnapshot()
+
+        setRepositoryMode('cloud')
+
+        window.alert(
+          '클라우드 모드로 전환합니다. 사진은 아직 이 브라우저의 로컬 저장소를 사용해요.',
+        )
+
+        window.location.reload()
+      } catch (error) {
+        setCloudStatus(
+          error instanceof Error
+            ? error.message
+            : '클라우드 모드로 전환하지 못했어요.',
+        )
+        setCloudBusy(false)
+      }
+
+      return
+    }
+
+    setRepositoryMode('local')
+
+    window.alert(
+      '로컬 모드로 전환합니다. 앱을 다시 불러올게요.',
+    )
+
+    window.location.reload()
   }
 
   const requestNotificationPermission = async () => {
@@ -555,6 +701,138 @@ export default function MorePage({
               실외 날씨는 사육장 내부와 같지 않으므로 자동 처방이 아니라
               “오늘은 냉방/분무 상태를 한 번 더 확인하자”는 보조 신호로만 사용합니다.
             </p>
+          </Card>
+
+          <Card title="클라우드 데이터 실험실" icon="☁️">
+            <div className="cloud-lab-head">
+              <div>
+                <span>Phase 5.2</span>
+                <strong>
+                  구조화 기록만 D1과 연결
+                </strong>
+                <small>
+                  사진 원본과 사진 메타데이터는 아직 이 브라우저에 남아 있어요.
+                </small>
+              </div>
+
+              <span
+                className={`cloud-mode-badge ${getRepositoryMode()}`}
+              >
+                {getRepositoryMode() === 'cloud'
+                  ? 'CLOUD'
+                  : 'LOCAL'}
+              </span>
+            </div>
+
+            <div className="cloud-lab-fields">
+              <label>
+                <span>Worker API 주소</span>
+                <input
+                  type="url"
+                  value={cloudApiBaseDraft}
+                  placeholder="http://localhost:8787"
+                  onChange={(event) =>
+                    setCloudApiBaseDraft(
+                      event.target.value,
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                <span>
+                  개발용 API 토큰
+                  <small>
+                    · 현재 브라우저 탭 세션에만 보관
+                  </small>
+                </span>
+                <input
+                  type="password"
+                  value={cloudTokenDraft}
+                  placeholder="로컬 테스트에서만 사용"
+                  autoComplete="off"
+                  onChange={(event) =>
+                    setCloudTokenDraft(
+                      event.target.value,
+                    )
+                  }
+                />
+              </label>
+            </div>
+
+            <div className="cloud-lab-actions">
+              <button
+                type="button"
+                disabled={cloudBusy}
+                onClick={() =>
+                  void testCloudConnection()
+                }
+              >
+                🔌 연결 확인
+              </button>
+
+              <button
+                type="button"
+                disabled={cloudBusy}
+                onClick={() =>
+                  void uploadLocalSnapshot()
+                }
+              >
+                ⬆️ 로컬 기록 → D1
+              </button>
+            </div>
+
+            <div className="cloud-mode-switch">
+              <button
+                type="button"
+                className={
+                  getRepositoryMode() === 'local'
+                    ? 'active'
+                    : ''
+                }
+                disabled={cloudBusy}
+                onClick={() =>
+                  void activateRepositoryMode(
+                    'local',
+                  )
+                }
+              >
+                로컬 모드
+              </button>
+
+              <button
+                type="button"
+                className={
+                  getRepositoryMode() === 'cloud'
+                    ? 'active'
+                    : ''
+                }
+                disabled={cloudBusy}
+                onClick={() =>
+                  void activateRepositoryMode(
+                    'cloud',
+                  )
+                }
+              >
+                클라우드 모드
+              </button>
+            </div>
+
+            {cloudStatus && (
+              <p className="cloud-lab-status">
+                {cloudStatus}
+              </p>
+            )}
+
+            <div className="cloud-lab-warning">
+              <strong>개발 단계 인증</strong>
+              <p>
+                로컬 테스트에서는 Worker의 API_TOKEN을 현재 탭의
+                sessionStorage에만 넣어 사용합니다. 실제 배포에서는
+                브라우저 번들에 토큰을 넣지 않고 Cloudflare Access
+                인증으로 교체할 예정입니다.
+              </p>
+            </div>
           </Card>
 
           <Card title="백업 · 복원" icon="💾">

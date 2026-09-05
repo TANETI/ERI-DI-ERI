@@ -2993,3 +2993,424 @@ select:focus {
   text-align: left;
   backdrop-filter: blur(8px);
 }
+
+
+/* Phase 5.2 — Cloudflare structured-data lab */
+.repository-mode-dot {
+  position: fixed;
+  z-index: 55;
+  top: 12px;
+  right: 12px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid rgba(255, 255, 255, .9);
+  border-radius: 50%;
+  box-shadow: 0 1px 5px rgba(45, 42, 36, .18);
+  pointer-events: none;
+}
+
+.repository-mode-dot.local {
+  background: #9a988e;
+}
+
+.repository-mode-dot.cloud {
+  background: #738a72;
+}
+
+.cloud-lab-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: #f5f7f2;
+}
+
+.cloud-lab-head > div {
+  display: grid;
+  gap: 3px;
+}
+
+.cloud-lab-head span {
+  color: var(--muted);
+  font-size: .64rem;
+  font-weight: 800;
+}
+
+.cloud-lab-head strong {
+  font-size: .86rem;
+}
+
+.cloud-lab-head small {
+  color: var(--muted);
+  font-size: .63rem;
+  line-height: 1.45;
+}
+
+.cloud-mode-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  height: 32px;
+  border-radius: 999px;
+  padding-inline: 10px;
+  font-size: .61rem !important;
+  font-weight: 900 !important;
+}
+
+.cloud-mode-badge.local {
+  background: #eceae4;
+  color: #747168 !important;
+}
+
+.cloud-mode-badge.cloud {
+  background: var(--sage-soft);
+  color: var(--sage-dark) !important;
+}
+
+.cloud-lab-fields {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.cloud-lab-fields label {
+  display: grid;
+  gap: 6px;
+}
+
+.cloud-lab-fields label > span {
+  color: var(--muted);
+  font-size: .66rem;
+  font-weight: 800;
+}
+
+.cloud-lab-fields label small {
+  font-size: inherit;
+  font-weight: 500;
+}
+
+.cloud-lab-fields input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line-soft);
+  border-radius: 11px;
+  background: white;
+  color: var(--text);
+  padding: 0 11px;
+  font: inherit;
+  font-size: .72rem;
+}
+
+.cloud-lab-actions,
+.cloud-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cloud-lab-actions button,
+.cloud-mode-switch button {
+  min-height: 41px;
+  border: 1px solid var(--line-soft);
+  border-radius: 11px;
+  background: #fbfaf7;
+  color: var(--text);
+  font-size: .68rem;
+  font-weight: 850;
+}
+
+.cloud-mode-switch button.active {
+  border-color: rgba(91, 111, 87, .28);
+  background: var(--sage-soft);
+  color: var(--sage-dark);
+}
+
+.cloud-lab-actions button:disabled,
+.cloud-mode-switch button:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+
+.cloud-lab-status {
+  margin: 10px 0 0;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: #f8f5ef;
+  color: var(--text);
+  font-size: .65rem;
+  line-height: 1.5;
+}
+
+.cloud-lab-warning {
+  margin-top: 10px;
+  padding: 10px 11px;
+  border-radius: 11px;
+  background: #faf3e6;
+}
+
+.cloud-lab-warning strong {
+  color: #725f39;
+  font-size: .67rem;
+}
+
+.cloud-lab-warning p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: .62rem;
+  line-height: 1.52;
+}
+
+@media (max-width: 540px) {
+  .cloud-lab-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Phase 5.2.1 — 기록 화면 버튼 중심 UI */
+.record-manager-list {
+  display: grid;
+  gap: 9px;
+}
+
+.record-manager-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  padding: 11px;
+  border: 1px solid var(--line-soft);
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 2px 9px rgba(67, 58, 47, .035);
+  transition:
+    transform .12s ease,
+    border-color .12s ease,
+    background .12s ease,
+    box-shadow .12s ease;
+}
+
+.record-manager-row:hover {
+  transform: translateY(-1px);
+  border-color: rgba(96, 111, 88, .24);
+  background: #fdfcf9;
+  box-shadow: 0 5px 15px rgba(67, 58, 47, .055);
+}
+
+.record-manager-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  align-self: start;
+  border: 0;
+  border-radius: 13px;
+  background: #f3f1eb;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.record-kind-feeding .record-manager-icon {
+  background: #f6f0e4;
+}
+
+.record-kind-weight .record-manager-icon {
+  background: #edf2ec;
+}
+
+.record-kind-defecation .record-manager-icon {
+  background: #f5eee7;
+}
+
+.record-kind-preset .record-manager-icon {
+  background: #eef2e9;
+}
+
+.record-kind-tmi .record-manager-icon {
+  background: #f1edf3;
+}
+
+.record-manager-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  align-self: center;
+}
+
+.record-manager-copy strong {
+  color: var(--text);
+  font-size: .81rem;
+  line-height: 1.3;
+}
+
+.record-manager-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .71rem;
+  line-height: 1.5;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.record-manager-actions {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 6px;
+  align-self: center;
+}
+
+.mini-action {
+  min-width: 58px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #f8f7f3;
+  color: var(--sage-dark);
+  padding: 7px 10px;
+  font: inherit;
+  font-size: .66rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    transform .1s ease,
+    background .1s ease,
+    border-color .1s ease;
+}
+
+.mini-action:hover {
+  border-color: rgba(86, 101, 80, .32);
+  background: var(--sage-soft);
+}
+
+.mini-action:active {
+  transform: scale(.96);
+}
+
+.mini-action.danger {
+  border-color: #eadbd3;
+  background: #fffaf7;
+  color: #875746;
+}
+
+.mini-action.danger:hover {
+  border-color: #ddc3b7;
+  background: #f8ece6;
+}
+
+/* 빠른 체크도 '체크박스'보다 선택 버튼처럼 보이게 */
+.preset-toggle {
+  min-height: 39px;
+  border-radius: 999px;
+  padding: 8px 12px;
+  box-shadow: 0 1px 3px rgba(60, 52, 40, .025);
+}
+
+.preset-toggle .preset-checkmark {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  transition:
+    background .12s ease,
+    color .12s ease;
+}
+
+.preset-toggle.selected .preset-checkmark {
+  border-color: var(--sage-dark);
+  background: var(--sage-dark);
+  color: white;
+}
+
+.preset-toggle:active,
+.detail-launcher:active {
+  transform: scale(.97);
+}
+
+/* 상세 기록 진입 버튼은 툴바처럼 크게 */
+.detail-launcher-grid {
+  gap: 9px;
+}
+
+.detail-launcher {
+  min-height: 72px;
+  border-radius: 15px;
+  padding: 12px 8px;
+  box-shadow: 0 2px 8px rgba(60, 52, 40, .035);
+  transition:
+    transform .1s ease,
+    background .12s ease,
+    border-color .12s ease;
+}
+
+.detail-launcher > span {
+  font-size: 1.25rem;
+}
+
+.detail-launcher > strong {
+  font-size: .74rem;
+}
+
+.detail-launcher > small {
+  opacity: .72;
+}
+
+/* 편집 패널의 하단 액션도 명확한 버튼 그룹 */
+.editor-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.editor-actions .secondary-action,
+.editor-actions .editor-save {
+  width: 100%;
+  min-width: 0;
+  min-height: 43px;
+  margin: 0;
+  border-radius: 12px;
+}
+
+@media (max-width: 700px) {
+  .record-manager-row {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 9px;
+    padding: 10px;
+  }
+
+  .record-manager-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+  }
+
+  .record-manager-actions {
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mini-action {
+    width: 100%;
+    min-height: 38px;
+  }
+}
+
+@media (max-width: 430px) {
+  .detail-launcher-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .detail-launcher {
+    min-height: 64px;
+  }
+}
